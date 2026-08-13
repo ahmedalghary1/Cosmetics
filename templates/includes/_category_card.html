@@ -1,0 +1,2 @@
+{% load static %}
+<a class="category-card" href="{{ category.get_absolute_url }}">{% if category.image %}<img src="{{ category.image.url }}" alt="{{ category.name }}" width="360" height="420" loading="lazy">{% else %}<img src="{% static 'images/demo/cream.webp' %}" alt="{{ category.name }}" width="360" height="420" loading="lazy">{% endif %}<span>{{ category.name }}</span></a>

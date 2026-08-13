@@ -1,0 +1,47 @@
+from django.urls import path
+
+from . import views
+
+app_name = "dashboard"
+
+urlpatterns = [
+    path("", views.home, name="home"),
+    path("products/", views.product_list, name="products"),
+    path("products/add/", views.product_form, name="product_add"),
+    path("products/<int:pk>/edit/", views.product_form, name="product_edit"),
+    path("products/<int:pk>/delete/", views.product_delete, name="product_delete"),
+    path("products/<int:pk>/toggle/", views.product_toggle, name="product_toggle"),
+    path("inventory/", views.inventory, name="inventory"),
+    path("categories/", views.category_list, name="categories"),
+    path("categories/add/", views.category_form, name="category_add"),
+    path("categories/<int:pk>/edit/", views.category_form, name="category_edit"),
+    path("categories/<int:pk>/delete/", views.category_delete, name="category_delete"),
+    path("orders/", views.order_list, name="orders"),
+    path("orders/<int:pk>/", views.order_detail, name="order_detail"),
+    path("payments/", views.payments, name="payments"),
+    path("users/", views.user_list, name="users"),
+    path("users/<int:pk>/", views.user_detail, name="user_detail"),
+    path("users/<int:pk>/toggle/", views.user_toggle, name="user_toggle"),
+    path("shipping/", views.shipping_list, name="shipping"),
+    path("shipping/add/", views.shipping_form, name="shipping_add"),
+    path("shipping/<int:pk>/edit/", views.shipping_form, name="shipping_edit"),
+    path("coupons/", views.coupon_list, name="coupons"),
+    path("coupons/add/", views.coupon_form, name="coupon_add"),
+    path("coupons/<int:pk>/edit/", views.coupon_form, name="coupon_edit"),
+    path("banners/", views.banner_list, name="banners"),
+    path("banners/add/", views.banner_form, name="banner_add"),
+    path("banners/<int:pk>/edit/", views.banner_form, name="banner_edit"),
+    path("pages/", views.page_list, name="pages"),
+    path("pages/add/", views.page_form, name="page_add"),
+    path("pages/<int:pk>/edit/", views.page_form, name="page_edit"),
+    path("gallery/", views.gallery_list, name="gallery"),
+    path("gallery/add/", views.gallery_form, name="gallery_add"),
+    path("gallery/<int:pk>/edit/", views.gallery_form, name="gallery_edit"),
+    path("routine/", views.routine_list, name="routine"),
+    path("routine/add/", views.routine_form, name="routine_add"),
+    path("routine/<int:pk>/edit/", views.routine_form, name="routine_edit"),
+    path("settings/", views.settings_edit, name="settings"),
+    path("messages/", views.messages_list, name="messages"),
+    path("messages/<int:pk>/", views.message_detail, name="message_detail"),
+    path("delete/<str:model_name>/<int:pk>/", views.generic_delete, name="generic_delete"),
+]
