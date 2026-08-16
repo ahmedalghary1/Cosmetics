@@ -29,7 +29,13 @@ if not any(host.endswith(".pythonanywhere.com") for host in ALLOWED_HOSTS):
         "to ALLOWED_HOSTS."
     )
 
-DATA_ROOT = Path(os.getenv("PYTHONANYWHERE_DATA_ROOT", BASE_DIR / "data")).expanduser().resolve()
+# Keep mutable application data outside the Git checkout.  This prevents a
+# deploy, branch switch, or accidental repository cleanup from replacing the
+# live SQLite database.
+DEFAULT_DATA_ROOT = BASE_DIR.parent / "cosmetics_data"
+DATA_ROOT = Path(
+    os.getenv("PYTHONANYWHERE_DATA_ROOT", DEFAULT_DATA_ROOT)
+).expanduser().resolve()
 STATIC_ROOT = Path(os.getenv("STATIC_ROOT", BASE_DIR / "staticfiles")).expanduser().resolve()
 MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", BASE_DIR / "media")).expanduser().resolve()
 PRIVATE_MEDIA_ROOT = Path(
@@ -37,6 +43,11 @@ PRIVATE_MEDIA_ROOT = Path(
 ).expanduser().resolve()
 
 SQLITE_PATH = Path(os.getenv("SQLITE_PATH", DATA_ROOT / "db.sqlite3")).expanduser().resolve()
+if SQLITE_PATH == BASE_DIR or BASE_DIR in SQLITE_PATH.parents:
+    raise ImproperlyConfigured(
+        "SQLITE_PATH must be outside the Git project directory on PythonAnywhere. "
+        f"Use {DEFAULT_DATA_ROOT / 'db.sqlite3'} (recommended)."
+    )
 DATABASES["default"]["NAME"] = SQLITE_PATH
 DATABASES["default"]["CONN_MAX_AGE"] = 0
 

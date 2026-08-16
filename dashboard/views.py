@@ -206,8 +206,21 @@ def product_form(request, pk=None):
 @require_POST
 def product_delete(request, pk):
     product = get_object_or_404(Product, pk=pk)
-    product.delete()
-    messages.success(request, "تم حذف المنتج.")
+    try:
+        product.delete()
+    except ProtectedError:
+        # Inventory batches and reservations are audit records and must not be
+        # cascaded away.  Archive the product so it disappears from the public
+        # catalog while keeping historical stock/order data intact.
+        product.is_active = False
+        product.save(update_fields=["is_active", "updated_at"])
+        messages.warning(
+            request,
+            "لا يمكن حذف المنتج نهائيًا لارتباطه بسجل مخزون أو طلبات؛ "
+            "تم إيقافه وإخفاؤه من المتجر بدلًا من ذلك.",
+        )
+    else:
+        messages.success(request, "تم حذف المنتج نهائيًا.")
     return redirect("dashboard:products")
 
 

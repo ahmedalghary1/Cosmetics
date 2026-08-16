@@ -9,7 +9,7 @@ from django.urls import reverse
 
 from core.models import Offer
 from orders.models import Order, ShippingZone
-from products.models import Category, Product
+from products.models import Category, InventoryBatch, Product
 
 
 @override_settings(SECURE_SSL_REDIRECT=False)
@@ -81,6 +81,45 @@ class DashboardPermissionTests(TestCase):
         })
         self.assertRedirects(response, reverse("dashboard:offers"))
         self.assertTrue(Offer.objects.filter(title="عرض الأسبوع").exists())
+
+    def test_unreferenced_product_can_be_deleted(self):
+        user = get_user_model().objects.create_superuser(
+            username="delete-admin", password="safe-password", email="delete@example.com",
+        )
+        category = Category.objects.create(name="منتجات قابلة للحذف")
+        product = Product.objects.create(
+            name="منتج مؤقت", sku="DELETE-1", category=category,
+            description="وصف", price=Decimal("100.00"), stock_quantity=0,
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(reverse("dashboard:product_delete", args=[product.pk]))
+
+        self.assertRedirects(response, reverse("dashboard:products"))
+        self.assertFalse(Product.objects.filter(pk=product.pk).exists())
+
+    def test_product_with_inventory_history_is_archived_instead_of_error(self):
+        user = get_user_model().objects.create_superuser(
+            username="archive-admin", password="safe-password", email="archive@example.com",
+        )
+        category = Category.objects.create(name="منتجات لها مخزون")
+        product = Product.objects.create(
+            name="منتج مرتبط", sku="ARCHIVE-1", category=category,
+            description="وصف", price=Decimal("100.00"), stock_quantity=2,
+        )
+        InventoryBatch.objects.create(
+            product=product, batch_number="BATCH-1", quantity=2,
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("dashboard:product_delete", args=[product.pk]), follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        product.refresh_from_db()
+        self.assertFalse(product.is_active)
+        self.assertContains(response, "تم إيقافه وإخفاؤه من المتجر")
 
     def test_only_superuser_can_assign_roles(self):
         target = get_user_model().objects.create_user(username="target", password="safe-password")

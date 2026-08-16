@@ -1,6 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal
 
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -10,6 +11,22 @@ from orders.models import Order
 from products.models import Category, Product
 
 from .models import ContentPage, Offer
+
+
+class SeedCatalogDemoTests(TestCase):
+    def test_command_creates_catalog_and_is_idempotent(self):
+        call_command("seed_catalog_demo", no_images=True, verbosity=0)
+
+        self.assertEqual(Category.objects.count(), 6)
+        self.assertEqual(Product.objects.filter(sku__startswith="LUM-").count(), 10)
+        self.assertEqual(Offer.objects.count(), 3)
+        self.assertTrue(all(offer.products.exists() for offer in Offer.objects.all()))
+
+        call_command("seed_catalog_demo", no_images=True, verbosity=0)
+
+        self.assertEqual(Category.objects.count(), 6)
+        self.assertEqual(Product.objects.filter(sku__startswith="LUM-").count(), 10)
+        self.assertEqual(Offer.objects.count(), 3)
 
 
 class PublicPageSmokeTests(TestCase):

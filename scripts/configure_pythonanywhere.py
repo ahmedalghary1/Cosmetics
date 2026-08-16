@@ -108,11 +108,13 @@ def main() -> None:
     if not (project_dir / "manage.py").is_file():
         raise SystemExit(f"manage.py was not found in {project_dir}")
 
-    data_root = project_dir / "data"
+    # Mutable data lives beside the Git checkout, never inside it.  A git pull,
+    # branch switch, or fresh clone can therefore not replace the live store DB.
+    data_root = project_dir.parent / "cosmetics_data"
     static_root = project_dir / "staticfiles"
     media_root = project_dir / "media"
     private_media_root = project_dir / "private_media"
-    backup_root = project_dir / "backups"
+    backup_root = data_root / "backups"
     for directory in (
         data_root,
         data_root / "cache",
@@ -124,10 +126,16 @@ def main() -> None:
         directory.mkdir(parents=True, exist_ok=True)
 
     target_database = data_root / "db.sqlite3"
-    legacy_database = project_dir / "db.sqlite3"
-    if legacy_database.is_file() and not target_database.exists():
-        sqlite_backup(legacy_database, target_database)
-        print(f"Copied the existing SQLite database safely to {target_database}")
+    legacy_databases = (
+        project_dir / "data" / "db.sqlite3",
+        project_dir / "db.sqlite3",
+    )
+    if not target_database.exists():
+        for legacy_database in legacy_databases:
+            if legacy_database.is_file():
+                sqlite_backup(legacy_database, target_database)
+                print(f"Copied the existing SQLite database safely to {target_database}")
+                break
 
     env_path = project_dir / ".env"
     values = read_env(env_path)
