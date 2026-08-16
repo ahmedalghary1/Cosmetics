@@ -36,7 +36,7 @@ if not SECRET_KEY:
         SECRET_KEY = "django-insecure-development-only-never-use-in-production"
     else:
         raise ImproperlyConfigured("DJANGO_SECRET_KEY is required when DEBUG=False.")
-ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if host.strip()]
+ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "*").split(",") if host.strip()]
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if origin.strip()]
 
 INSTALLED_APPS = [
