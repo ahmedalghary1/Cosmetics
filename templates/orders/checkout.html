@@ -14,7 +14,7 @@
   </div>
   <aside class="checkout-summary panel"><h2>طلبك</h2>{% for item in cart %}<div class="checkout-item"><span>{{ item.product.name }}{% if item.variant %} — {{ item.variant.option_summary }}{% endif %} × {{ item.quantity }}</span><strong>{{ item.total_price|floatformat:"-2" }}</strong></div>{% endfor %}<hr><div><span>المجموع</span><strong>{{ cart.subtotal|floatformat:"-2" }} {{ store_settings.currency }}</strong></div>{% if cart.discount %}<div class="discount"><span>الخصم</span><strong>− {{ cart.discount|floatformat:"-2" }}</strong></div>{% endif %}<div><span>الشحن</span><strong data-shipping-cost>اختاري المحافظة</strong></div><p class="secure-note" data-delivery-estimate></p><div class="summary-total"><span>الإجمالي</span><strong><span data-order-total>{{ cart.total_after_discount|floatformat:"-2" }}</span> {{ store_settings.currency }}</strong></div>
     <label class="terms-check">{{ form.terms_accepted }} <span>{{ form.terms_accepted.label }}</span></label>{% for error in form.terms_accepted.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
-    <button class="btn btn-primary full-btn" type="submit" data-checkout-submit>تأكيد الطلب</button><p class="secure-note">يتم حجز المخزون مؤقتًا حتى تأكيد الطلب.</p>
+    <button class="btn btn-primary full-btn" type="submit" data-checkout-submit>{% icon "shield-check" %}<span>تأكيد الطلب</span></button><p class="secure-note">يتم حجز المخزون مؤقتًا حتى تأكيد الطلب.</p>
   </aside>
 </form>
 {% endblock %}

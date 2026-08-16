@@ -139,8 +139,11 @@
     try {
       const data = await postForm(form);
       button.classList.toggle("active", data.active);
-      button.textContent = data.active ? "♥" : "♡";
       button.setAttribute("aria-pressed", String(data.active));
+      const label = qs("[data-wishlist-label]", button);
+      if (label) label.textContent = data.active ? "في المفضلة" : "أضيفي للمفضلة";
+      const accessibleLabel = data.active ? button.dataset.removeLabel : button.dataset.addLabel;
+      if (accessibleLabel) button.setAttribute("aria-label", accessibleLabel);
       toast(data.message);
     } catch (error) {
       toast(error.message, true);

@@ -15,6 +15,8 @@
   <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
   {% block og_image %}<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/demo/hero.webp' %}">{% endblock %}
   {% if store_settings.favicon %}<link rel="icon" href="{{ store_settings.favicon.url }}">{% endif %}
+  <link rel="preload" href="{% static 'fonts/ibm-plex-sans-arabic/IBMPlexSansArabic-Regular.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{% static 'fonts/ibm-plex-sans-arabic/IBMPlexSansArabic-SemiBold.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="{% static 'css/style.css' %}" as="style">
   <link rel="stylesheet" href="{% static 'css/style.css' %}">
   {% block extra_head %}{% endblock %}
@@ -25,7 +27,7 @@
   {% include "includes/messages.html" %}
   <main id="main-content">{% block content %}{% endblock %}</main>
   {% include "includes/footer.html" %}
-  {% if whatsapp_url %}<a class="whatsapp-float" href="{{ whatsapp_url }}" target="_blank" rel="noopener" aria-label="تواصل معنا عبر واتساب">واتساب</a>{% endif %}
+  {% if whatsapp_url %}<a class="whatsapp-float" href="{{ whatsapp_url }}" target="_blank" rel="noopener" aria-label="تواصل معنا عبر واتساب">{% brand_icon "whatsapp" %}<span>واتساب</span></a>{% endif %}
   <div class="toast-region" aria-live="polite" aria-atomic="true"></div>
   <script src="{% static 'js/main.js' %}" defer></script>
   {% block extra_js %}{% endblock %}

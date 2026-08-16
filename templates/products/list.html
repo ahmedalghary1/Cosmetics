@@ -3,10 +3,10 @@
 {% block content %}
 <header class="page-hero shop-hero"><div class="container"><p class="eyebrow">{% if selected_offer %}عرض لفترة محدودة{% else %}كل ما يحتاجه روتينك{% endif %}</p><h1>{% if selected_offer %}{{ selected_offer.title }}{% elif selected_category %}{{ selected_category.name }}{% else %}المتجر{% endif %}</h1>{% if selected_offer.subtitle %}<p>{{ selected_offer.subtitle }}</p>{% elif selected_category.description %}<p>{{ selected_category.description }}</p>{% endif %}</div></header>
 <div class="container shop-layout section">
-  <button class="btn btn-outline filter-toggle" type="button" data-filter-toggle aria-expanded="false" aria-controls="product-filters">التصفية والترتيب</button>
+  <button class="btn btn-outline filter-toggle" type="button" data-filter-toggle aria-expanded="false" aria-controls="product-filters">{% icon "sliders-horizontal" %}<span>التصفية والترتيب</span></button>
   <aside class="filters panel" data-filters id="product-filters">
     <form method="get" action="{% if selected_category %}{{ selected_category.get_absolute_url }}{% else %}{% url 'products:list' %}{% endif %}">
-      <div class="filter-head"><h2>صفّي النتائج</h2><button type="button" class="mobile-only" data-filter-close>×</button></div>
+      <div class="filter-head"><h2>صفّي النتائج</h2><button type="button" class="mobile-only" data-filter-close aria-label="إغلاق عوامل التصفية">{% icon "x" %}</button></div>
       <label for="shop-q">البحث</label><input id="shop-q" name="q" value="{{ request.GET.q }}" placeholder="اسم المنتج">
       {% if not selected_category %}<label for="filter-category">التصنيف</label><select id="filter-category" name="category"><option value="">كل التصنيفات</option>{% for category in categories %}<option value="{{ category.slug }}" {% if request.GET.category == category.slug %}selected{% endif %}>{{ category.name }}</option>{% endfor %}</select>{% endif %}
       <div class="price-filter"><div><label for="min-price">من</label><input id="min-price" name="min_price" inputmode="decimal" value="{{ request.GET.min_price }}"></div><div><label for="max-price">إلى</label><input id="max-price" name="max_price" inputmode="decimal" value="{{ request.GET.max_price }}"></div></div>

@@ -1,19 +1,19 @@
-<aside class="dashboard-sidebar" data-dashboard-sidebar><div class="dashboard-logo"><span>{{ store_settings.store_name }}</span><small>لوحة التحكم</small><button type="button" class="icon-btn" data-dashboard-close aria-label="إغلاق">×</button></div><nav>
-  <a href="{% url 'dashboard:home' %}">⌂ الرئيسية</a>
-  {% if perms.orders.view_order %}<a href="{% url 'dashboard:orders' %}">▤ الطلبات</a><a href="{% url 'dashboard:payments' %}">◉ المدفوعات</a>{% endif %}
-  {% if perms.orders.view_returnrequest %}<a href="{% url 'dashboard:returns' %}">↩ المرتجعات</a>{% endif %}
-  {% if perms.products.view_product %}<a href="{% url 'dashboard:products' %}">◇ المنتجات</a>{% endif %}
-  {% if perms.products.view_category %}<a href="{% url 'dashboard:categories' %}">◫ التصنيفات</a>{% endif %}
-  {% if perms.products.view_inventorybatch %}<a href="{% url 'dashboard:inventory' %}">▥ المخزون</a><a href="{% url 'dashboard:batches' %}">▦ التشغيلات والصلاحية</a>{% endif %}
-  {% if perms.products.view_variantoption %}<a href="{% url 'dashboard:variant_options' %}">☷ قيم الخيارات</a>{% endif %}
-  {% if perms.auth.view_user %}<a href="{% url 'dashboard:users' %}">♙ المستخدمون</a>{% endif %}
-  {% if perms.core.view_offer %}<a href="{% url 'dashboard:offers' %}">٪ العروض</a>{% endif %}
-  {% if perms.orders.view_coupon %}<a href="{% url 'dashboard:coupons' %}">٪ كوبونات الخصم</a>{% endif %}
-  {% if perms.orders.view_shippingzone %}<a href="{% url 'dashboard:shipping' %}">⌖ مناطق الشحن</a>{% endif %}
-  {% if perms.core.view_banner %}<a href="{% url 'dashboard:banners' %}">▱ البانرات</a>{% endif %}
-  {% if perms.core.view_routinestep %}<a href="{% url 'dashboard:routine' %}">◌ روتين العناية</a>{% endif %}
-  {% if perms.core.view_socialgalleryimage %}<a href="{% url 'dashboard:gallery' %}">▦ المعرض الاجتماعي</a>{% endif %}
-  {% if perms.core.view_contentpage %}<a href="{% url 'dashboard:pages' %}">□ صفحات الموقع</a>{% endif %}
-  {% if perms.core.view_contactmessage %}<a href="{% url 'dashboard:messages' %}">✉ رسائل التواصل</a>{% endif %}
-  {% if perms.core.change_storesettings %}<a href="{% url 'dashboard:settings' %}">⚙ إعدادات الموقع</a>{% endif %}
-</nav><form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button type="submit">تسجيل الخروج</button></form></aside>
+<aside class="dashboard-sidebar" data-dashboard-sidebar><div class="dashboard-logo"><span>{{ store_settings.store_name }}</span><small>لوحة التحكم</small><button type="button" class="icon-btn" data-dashboard-close aria-label="إغلاق">{% icon "x" %}</button></div><nav>
+  <a href="{% url 'dashboard:home' %}">{% icon "layout-dashboard" %}<span>الرئيسية</span></a>
+  {% if perms.orders.view_order %}<a href="{% url 'dashboard:orders' %}">{% icon "clipboard-list" %}<span>الطلبات</span></a><a href="{% url 'dashboard:payments' %}">{% icon "credit-card" %}<span>المدفوعات</span></a>{% endif %}
+  {% if perms.orders.view_returnrequest %}<a href="{% url 'dashboard:returns' %}">{% icon "rotate-ccw" %}<span>المرتجعات</span></a>{% endif %}
+  {% if perms.products.view_product %}<a href="{% url 'dashboard:products' %}">{% icon "package" %}<span>المنتجات</span></a>{% endif %}
+  {% if perms.products.view_category %}<a href="{% url 'dashboard:categories' %}">{% icon "shapes" %}<span>التصنيفات</span></a>{% endif %}
+  {% if perms.products.view_inventorybatch %}<a href="{% url 'dashboard:inventory' %}">{% icon "warehouse" %}<span>المخزون</span></a><a href="{% url 'dashboard:batches' %}">{% icon "calendar-clock" %}<span>التشغيلات والصلاحية</span></a>{% endif %}
+  {% if perms.products.view_variantoption %}<a href="{% url 'dashboard:variant_options' %}">{% icon "list-filter" %}<span>قيم الخيارات</span></a>{% endif %}
+  {% if perms.auth.view_user %}<a href="{% url 'dashboard:users' %}">{% icon "users" %}<span>المستخدمون</span></a>{% endif %}
+  {% if perms.core.view_offer %}<a href="{% url 'dashboard:offers' %}">{% icon "badge-percent" %}<span>العروض</span></a>{% endif %}
+  {% if perms.orders.view_coupon %}<a href="{% url 'dashboard:coupons' %}">{% icon "ticket-percent" %}<span>كوبونات الخصم</span></a>{% endif %}
+  {% if perms.orders.view_shippingzone %}<a href="{% url 'dashboard:shipping' %}">{% icon "map-pin" %}<span>مناطق الشحن</span></a>{% endif %}
+  {% if perms.core.view_banner %}<a href="{% url 'dashboard:banners' %}">{% icon "image" %}<span>البانرات</span></a>{% endif %}
+  {% if perms.core.view_routinestep %}<a href="{% url 'dashboard:routine' %}">{% icon "repeat-2" %}<span>روتين العناية</span></a>{% endif %}
+  {% if perms.core.view_socialgalleryimage %}<a href="{% url 'dashboard:gallery' %}">{% icon "images" %}<span>المعرض الاجتماعي</span></a>{% endif %}
+  {% if perms.core.view_contentpage %}<a href="{% url 'dashboard:pages' %}">{% icon "file-text" %}<span>صفحات الموقع</span></a>{% endif %}
+  {% if perms.core.view_contactmessage %}<a href="{% url 'dashboard:messages' %}">{% icon "mail" %}<span>رسائل التواصل</span></a>{% endif %}
+  {% if perms.core.change_storesettings %}<a href="{% url 'dashboard:settings' %}">{% icon "settings" %}<span>إعدادات الموقع</span></a>{% endif %}
+</nav><form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button type="submit">{% icon "log-out" %}<span>تسجيل الخروج</span></button></form></aside>

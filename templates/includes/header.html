@@ -1,7 +1,7 @@
-<div class="announcement">✦ {{ store_settings.header_announcement }}</div>
+<div class="announcement">{% icon "sparkles" %}<span>{{ store_settings.header_announcement }}</span></div>
 <header class="site-header" data-header>
   <div class="container nav-shell">
-    <button class="icon-btn mobile-only" type="button" data-menu-open aria-label="فتح القائمة" aria-expanded="false">☰</button>
+    <button class="icon-btn mobile-only" type="button" data-menu-open aria-label="فتح القائمة" aria-expanded="false">{% icon "menu" %}</button>
     <a class="brand" href="{% url 'core:home' %}" aria-label="{{ store_settings.store_name }} - الرئيسية">
       {% if store_settings.logo %}<img src="{{ store_settings.logo.url }}" alt="{{ store_settings.store_name }}" width="126" height="48">{% else %}<span>{{ store_settings.store_name }}</span><small>BEAUTY HOUSE</small>{% endif %}
     </a>
@@ -15,27 +15,27 @@
       <a href="{% url 'core:contact' %}">تواصل معنا</a>
     </nav>
     <div class="nav-actions">
-      <button class="icon-btn" type="button" data-search-open aria-label="بحث">⌕</button>
-      <a class="icon-btn desktop-only" href="{% if user.is_authenticated %}{% url 'accounts:profile' %}{% else %}{% url 'accounts:login' %}{% endif %}" aria-label="حسابي">♙</a>
-      <a class="icon-btn desktop-only" href="{% url 'accounts:wishlist' %}" aria-label="المفضلة">♡</a>
-      <a class="icon-btn cart-link" href="{% url 'cart:detail' %}" aria-label="سلة التسوق، {{ cart_count }} منتجات">▱<span class="cart-badge" data-cart-count>{{ cart_count }}</span></a>
+      <button class="icon-btn" type="button" data-search-open aria-label="بحث">{% icon "search" %}</button>
+      <a class="icon-btn desktop-only" href="{% if user.is_authenticated %}{% url 'accounts:profile' %}{% else %}{% url 'accounts:login' %}{% endif %}" aria-label="حسابي">{% icon "user-round" %}</a>
+      <a class="icon-btn desktop-only" href="{% url 'accounts:wishlist' %}" aria-label="المفضلة">{% icon "heart" %}</a>
+      <a class="icon-btn cart-link" href="{% url 'cart:detail' %}" aria-label="سلة التسوق، {{ cart_count }} منتجات">{% icon "shopping-bag" %}<span class="cart-badge" data-cart-count>{{ cart_count }}</span></a>
     </div>
   </div>
 </header>
 <div class="drawer-overlay" data-drawer-overlay hidden></div>
 <aside class="mobile-drawer" data-mobile-drawer aria-label="قائمة الهاتف" aria-hidden="true">
-  <div class="drawer-head"><strong>{{ store_settings.store_name }}</strong><button class="icon-btn" data-menu-close aria-label="إغلاق">×</button></div>
+  <div class="drawer-head"><strong>{{ store_settings.store_name }}</strong><button class="icon-btn" data-menu-close aria-label="إغلاق">{% icon "x" %}</button></div>
   <nav>
-    <a href="{% url 'core:home' %}">الرئيسية</a><a href="{% url 'products:list' %}">كل المنتجات</a>
-    <a href="{% url 'products:list' %}?best=1">الأكثر مبيعًا</a><a href="{% url 'products:list' %}?offers=1">العروض</a>
-    <a href="{% url 'accounts:wishlist' %}">المفضلة</a><a href="{% url 'accounts:profile' %}">حسابي</a>
-    <a href="{% url 'core:contact' %}">تواصل معنا</a>
+    <a href="{% url 'core:home' %}">{% icon "house" %}<span>الرئيسية</span></a><a href="{% url 'products:list' %}">{% icon "store" %}<span>كل المنتجات</span></a>
+    <a href="{% url 'products:list' %}?best=1">{% icon "sparkles" %}<span>الأكثر مبيعًا</span></a><a href="{% url 'products:list' %}?offers=1">{% icon "badge-percent" %}<span>العروض</span></a>
+    <a href="{% url 'accounts:wishlist' %}">{% icon "heart" %}<span>المفضلة</span></a><a href="{% url 'accounts:profile' %}">{% icon "user-round" %}<span>حسابي</span></a>
+    <a href="{% url 'core:contact' %}">{% icon "message-circle" %}<span>تواصل معنا</span></a>
   </nav>
 </aside>
 <dialog class="search-dialog" data-search-dialog>
   <form class="search-box" action="{% url 'core:search' %}" method="get">
     <label for="global-search">ما الذي تبحثين عنه؟</label>
-    <div><input id="global-search" name="q" type="search" placeholder="اسم المنتج أو التصنيف" required><button class="btn btn-primary">بحث</button></div>
-    <button type="button" class="search-close" data-search-close aria-label="إغلاق">×</button>
+    <div><input id="global-search" name="q" type="search" placeholder="اسم المنتج أو التصنيف" required><button class="btn btn-primary">{% icon "search" %}<span>بحث</span></button></div>
+    <button type="button" class="search-close" data-search-close aria-label="إغلاق">{% icon "x" %}</button>
   </form>
 </dialog>
