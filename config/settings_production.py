@@ -1,6 +1,9 @@
 from .settings import *  # noqa: F401,F403
 
 DEBUG = False
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "").strip()
+if not SECRET_KEY:
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY is required by production settings.")
 STORAGES["staticfiles"] = {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"}
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 SESSION_COOKIE_SECURE = True

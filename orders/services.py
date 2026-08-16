@@ -273,6 +273,14 @@ def _create_order(*, form, cart, user, idempotency_key):
 
 
 def create_order(*, form, cart, user=None, idempotency_key=None):
+    # New free PythonAnywhere accounts do not include scheduled tasks.  Release
+    # stale stock immediately before each checkout so abandoned orders cannot
+    # block later customers even when the management command is not scheduled.
+    try:
+        release_expired_reservations()
+    except Exception:
+        logger.exception("Lazy expired-reservation cleanup failed before checkout")
+
     idempotency_key = idempotency_key or secrets.token_hex(16)
     try:
         with transaction.atomic():

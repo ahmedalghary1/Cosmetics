@@ -135,7 +135,107 @@ gunicorn config.wsgi:application
 
 يمكن تفعيل `SECURE_HSTS_PRELOAD=True` بعد التأكد أن النطاق وكل نطاقاته الفرعية ستعمل عبر HTTPS دائمًا؛ التفعيل المبكر قد يصعب التراجع عنه.
 
-## الاختبارات
+## النشر على PythonAnywhere بالخطة المجانية
+
+المشروع مجهز لمسار WSGI التقليدي في PythonAnywhere. الإعداد الخاص بالمنصة هو
+`config.settings_pythonanywhere` ويستخدم مسارات دائمة داخل مجلد المشروع:
+
+```text
+/home/YOUR_USERNAME/Cosmetics/data/db.sqlite3   # قاعدة البيانات
+/home/YOUR_USERNAME/Cosmetics/staticfiles/     # ناتج collectstatic
+/home/YOUR_USERNAME/Cosmetics/media/           # صور المنتجات العامة
+/home/YOUR_USERNAME/Cosmetics/private_media/   # إيصالات الدفع الخاصة
+/home/YOUR_USERNAME/Cosmetics/backups/          # النسخ المحلية
+```
+
+لا تربط `private_media` بعنوان URL عام؛ إيصالات الدفع تُرسل من View محمي بالصلاحيات.
+
+### 1. رفع المشروع وتجهيز البيئة
+
+اجعل اسم مجلد المشروع `Cosmetics` داخل مجلد حسابك، سواء رفعته من تبويب Files أو نسخته من Git. من Bash Console:
+
+```bash
+cd ~/Cosmetics
+bash setup_pythonanywhere.sh
+```
+
+السكريبت يستخدم Python 3.13 افتراضيًا، ينشئ البيئة
+`/home/YOUR_USERNAME/.virtualenvs/cosmetics`، يولد `.env` سريًا بصلاحية `600`، وينشئ المجلدات، ثم ينفذ `migrate` و`setup_roles` و`collectstatic` وفحص الإنتاج ونسخة احتياطية.
+
+إذا اخترت إصدار Python مختلفًا في صفحة Web، يجب أن يطابق البيئة الافتراضية، مثل:
+
+```bash
+PYTHON_BIN=/usr/local/bin/python3.12 bash setup_pythonanywhere.sh
+```
+
+إذا كان `db.sqlite3` القديم موجودًا في جذر المشروع عند أول تشغيل، ينسخه السكريبت إلى `data/db.sqlite3` باستخدام SQLite Backup API ويتحقق من سلامته دون الكتابة فوق قاعدة موجودة. عند النشر من Git لن ينتقل ملف القاعدة لأنه مستبعد؛ ارفعه أولًا من تبويب Files إلى `~/Cosmetics/db.sqlite3`. ارفع كذلك محتويات `media/` إن كنت تريد نقل صور المتجر الحالية.
+
+### 2. إنشاء Web app
+
+من تبويب **Web**:
+
+1. اختر **Add a new web app** ثم **Manual configuration** وPython 3.13.
+2. ضع مسار Virtualenv:
+
+   ```text
+   /home/YOUR_USERNAME/.virtualenvs/cosmetics
+   ```
+
+3. افتح ملف WSGI الظاهر في الصفحة واستبدل محتواه بمحتوى `~/Cosmetics/pythonanywhere_wsgi.py`.
+4. أضف ربطين فقط في **Static files**:
+
+   | URL | Directory |
+   | --- | --- |
+   | `/static/` | `/home/YOUR_USERNAME/Cosmetics/staticfiles` |
+   | `/media/` | `/home/YOUR_USERNAME/Cosmetics/media` |
+
+5. فعّل **Force HTTPS** إن ظهر الخيار، ثم اضغط **Reload**.
+
+اختبر ملفًا ثابتًا مباشرة من:
+
+```text
+https://YOUR_USERNAME.pythonanywhere.com/static/css/style.css
+```
+
+لا تستخدم `runserver` ولا Gunicorn داخل PythonAnywhere؛ المنصة تستدعي WSGI بنفسها. بعد كل تحديث شغّل:
+
+```bash
+cd ~/Cosmetics
+source ~/.virtualenvs/cosmetics/bin/activate
+pip install -r requirements.txt
+python manage.py migrate --settings=config.settings_pythonanywhere
+python manage.py collectstatic --noinput --settings=config.settings_pythonanywhere
+python manage.py check --deploy --settings=config.settings_pythonanywhere
+```
+
+ثم Reload من تبويب Web. أنشئ المدير أول مرة فقط:
+
+```bash
+python manage.py createsuperuser --settings=config.settings_pythonanywhere
+python manage.py setup_roles --settings=config.settings_pythonanywhere
+```
+
+### 3. قيود الخطة المجانية
+
+- الخطة المجانية الحديثة توفر Web worker واحدًا و512 MiB تقريبًا؛ وهذا يطابق إعداد SQLite أحادي العامل، لكن يلزم مراقبة مساحة الصور والنسخ الاحتياطية.
+- قاعدة SQLite مناسبة لمتجر صغير منخفض التزامن هنا، وليست خيارًا جيدًا لحمل مرتفع. `SQLITE_ENABLE_WAL=False` متعمد على PythonAnywhere.
+- الحسابات المجانية الجديدة لا تتضمن Scheduled Tasks. لذلك يحرر التطبيق الحجوزات المنتهية تلقائيًا قبل أي Checkout جديد. نفذ الأمر اليدوي أيضًا عند الدخول للصيانة:
+
+  ```bash
+  python manage.py release_expired_reservations --settings=config.settings_pythonanywhere
+  ```
+
+- احتفظ بآخر ثلاث نسخ فقط على المساحة المجانية، ونزّل نسخة خارج المنصة بعد أي تحديث مهم:
+
+  ```bash
+  python manage.py backup_database --output-dir ~/Cosmetics/backups --keep 3 --settings=config.settings_pythonanywhere
+  ```
+
+- التطبيق يعيد توجيه HTTP إلى HTTPS ويستخدم Cookies آمنة. يبقى HSTS لمدة ساعة مبدئيًا، ولا يُفعل Preload على نطاق PythonAnywhere المشترك.
+- البريد مضبوط افتراضيًا على Console backend، فتظهر الرسائل في Error log ولا تصل للمستخدم. الاتصال بمزودي SMTP/SMS الخارجيين على الخطة المجانية يخضع لقائمة السماح لدى PythonAnywhere؛ لا تفعّل استعادة كلمة المرور بالبريد أو OTP كخدمة فعلية قبل اختبار المزود.
+- يجب تمديد صلاحية Web app المجاني من لوحة PythonAnywhere دوريًا وفق سياسة الحساب.
+
+ملف `.env.pythonanywhere.example` مرجع فقط؛ `.env` الحقيقي مولد محليًا ومستبعد من Git. لا تنشر قيمة `DJANGO_SECRET_KEY` ولا كلمة مرور البريد.
 
 ## النسخ الاحتياطي والاستعادة
 
@@ -147,13 +247,15 @@ python manage.py backup_database --output-dir /persistent-backups --keep 10
 
 جدوله يوميًا، وانسخ كذلك `media` و`private_media` إلى موقع منفصل مشفر. للاستعادة: أوقف نسخة التطبيق الوحيدة، احتفظ بنسخة من الملف الحالي، انسخ النسخة المتحققة إلى `SQLITE_PATH`، شغّل `python manage.py migrate`، ثم تحقق بـ `PRAGMA integrity_check` قبل إعادة الخدمة.
 
-يجب أيضًا جدولة:
+على استضافة تدعم المهام المجدولة، شغّل دوريًا:
 
 ```bash
 python manage.py release_expired_reservations
 ```
 
-كل دقيقة لتحرير حجوزات المخزون والقسائم المنتهية. أنشئ الأدوار الإدارية أو حدثها بأمان عبر `python manage.py setup_roles`.
+لتحرير حجوزات المخزون والقسائم المنتهية. على حساب PythonAnywhere مجاني حديث، ينفذ Checkout التنظيف تلقائيًا ويمكن تشغيل الأمر يدويًا عند الصيانة. أنشئ الأدوار الإدارية أو حدثها بأمان عبر `python manage.py setup_roles`.
+
+## الاختبارات
 
 ```bash
 python manage.py test

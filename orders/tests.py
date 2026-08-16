@@ -240,6 +240,21 @@ class CheckoutTests(TestCase):
         self.assertEqual(self.product.reserved_quantity, 0)
         self.assertEqual(order.status, Order.Status.CANCELLED)
 
+    def test_checkout_lazily_releases_expired_reservations(self):
+        expired_order = self.create()
+        expired_order.reservations.update(reserved_until=timezone.now() - timedelta(minutes=1))
+
+        replacement_cart = session_cart(self.product, 3)
+        replacement_form = self.form()
+        self.assertTrue(replacement_form.is_valid(), replacement_form.errors)
+        replacement_order = create_order(form=replacement_form, cart=replacement_cart)
+
+        expired_order.refresh_from_db()
+        self.product.refresh_from_db()
+        self.assertEqual(expired_order.status, Order.Status.CANCELLED)
+        self.assertEqual(replacement_order.reservations.get().status, InventoryReservation.Status.ACTIVE)
+        self.assertEqual(self.product.reserved_quantity, 3)
+
     def test_coupon_is_reserved_then_consumed_and_released(self):
         now = timezone.now()
         coupon = Coupon.objects.create(

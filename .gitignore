@@ -9,5 +9,7 @@ media/*
 private_media/
 backups/
 staticfiles/
+data/
+.env.backup-*
 .coverage
 .pytest_cache/
