@@ -1,7 +1,10 @@
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import F, Q
 from django.shortcuts import get_object_or_404, render
 
+from core.models import Offer
+
+from .forms import ProductFilterForm
 from .models import Category, Product
 
 
@@ -16,34 +19,47 @@ SORT_OPTIONS = {
 def product_list(request, category_slug=None):
     products = Product.objects.active().select_related("category")
     selected_category = None
+    selected_offer = None
+    filter_form = ProductFilterForm(request.GET or None)
+    filters = filter_form.cleaned_data if filter_form.is_valid() else {}
     if category_slug:
         selected_category = get_object_or_404(Category, slug=category_slug, is_active=True)
         products = products.filter(category=selected_category)
 
-    query = request.GET.get("q", "").strip()
+    query = filters.get("q", "").strip()
     if query:
         products = products.filter(
             Q(name__icontains=query)
             | Q(description__icontains=query)
             | Q(category__name__icontains=query)
         ).distinct()
-    category_filter = request.GET.get("category", "").strip()
+    category_filter = filters.get("category", "").strip()
     if category_filter and not selected_category:
         products = products.filter(category__slug=category_filter)
-    if request.GET.get("min_price"):
-        products = products.filter(price__gte=request.GET["min_price"])
-    if request.GET.get("max_price"):
-        products = products.filter(price__lte=request.GET["max_price"])
-    if request.GET.get("in_stock"):
-        products = products.filter(stock_quantity__gt=0)
-    if request.GET.get("offers"):
+    if filters.get("min_price") is not None:
+        products = products.filter(price__gte=filters["min_price"])
+    if filters.get("max_price") is not None:
+        products = products.filter(price__lte=filters["max_price"])
+    if filters.get("in_stock"):
+        products = products.filter(
+            Q(has_variants=False, stock_quantity__gt=F("reserved_quantity"))
+            | Q(has_variants=True, variants__is_active=True, variants__stock_quantity__gt=F("variants__reserved_quantity"))
+        ).distinct()
+    if filters.get("offers"):
         products = products.filter(old_price__isnull=False)
-    if request.GET.get("best"):
+    offer_id = request.GET.get("offer", "").strip()
+    if offer_id.isdigit():
+        selected_offer = Offer.objects.current().filter(pk=offer_id).first()
+        if selected_offer:
+            products = products.filter(offer_campaigns=selected_offer)
+        else:
+            products = products.none()
+    if filters.get("best"):
         products = products.filter(is_best_seller=True)
-    if request.GET.get("new"):
+    if filters.get("new"):
         products = products.filter(is_new=True)
 
-    sort = request.GET.get("sort", "newest")
+    sort = filters.get("sort") or "newest"
     products = products.order_by(SORT_OPTIONS.get(sort, "-created_at"))
     paginator = Paginator(products, 12)
     page = paginator.get_page(request.GET.get("page"))
@@ -53,15 +69,17 @@ def product_list(request, category_slug=None):
         "page_obj": page,
         "categories": Category.objects.filter(is_active=True),
         "selected_category": selected_category,
+        "selected_offer": selected_offer,
         "sort": sort,
         "query_string": query_params.urlencode(),
+        "filter_form": filter_form,
     }
     return render(request, "products/list.html", context)
 
 
 def product_detail(request, slug):
     product = get_object_or_404(
-        Product.objects.active().select_related("category").prefetch_related("images"), slug=slug
+        Product.objects.active().select_related("category").prefetch_related("images", "variants"), slug=slug
     )
     related = (
         Product.objects.active()

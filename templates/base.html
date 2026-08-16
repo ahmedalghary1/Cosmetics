@@ -7,13 +7,13 @@
   <title>{% block title %}{{ store_settings.store_name }} | جمال بعناية{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}منتجات مختارة للعناية والجمال، تجربة شراء سهلة وشحن لكل محافظات مصر.{% endblock %}">
   <meta name="theme-color" content="#4b3028">
-  <link rel="canonical" href="{{ request.build_absolute_uri }}">
+  <link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
   <meta property="og:locale" content="ar_EG">
   <meta property="og:type" content="{% block og_type %}website{% endblock %}">
   <meta property="og:title" content="{% block og_title %}{{ store_settings.store_name }}{% endblock %}">
   <meta property="og:description" content="{% block og_description %}جمالك يستحق عناية تعرفك.{% endblock %}">
-  <meta property="og:url" content="{{ request.build_absolute_uri }}">
-  {% block og_image %}{% endblock %}
+  <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+  {% block og_image %}<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/demo/hero.webp' %}">{% endblock %}
   {% if store_settings.favicon %}<link rel="icon" href="{{ store_settings.favicon.url }}">{% endif %}
   <link rel="preload" href="{% static 'css/style.css' %}" as="style">
   <link rel="stylesheet" href="{% static 'css/style.css' %}">

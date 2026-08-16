@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block title %}{% if selected_category %}{{ selected_category.name }}{% else %}المتجر{% endif %} | {{ store_settings.store_name }}{% endblock %}
 {% block content %}
-<header class="page-hero shop-hero"><div class="container"><p class="eyebrow">كل ما يحتاجه روتينك</p><h1>{% if selected_category %}{{ selected_category.name }}{% else %}المتجر{% endif %}</h1>{% if selected_category.description %}<p>{{ selected_category.description }}</p>{% endif %}</div></header>
+<header class="page-hero shop-hero"><div class="container"><p class="eyebrow">{% if selected_offer %}عرض لفترة محدودة{% else %}كل ما يحتاجه روتينك{% endif %}</p><h1>{% if selected_offer %}{{ selected_offer.title }}{% elif selected_category %}{{ selected_category.name }}{% else %}المتجر{% endif %}</h1>{% if selected_offer.subtitle %}<p>{{ selected_offer.subtitle }}</p>{% elif selected_category.description %}<p>{{ selected_category.description }}</p>{% endif %}</div></header>
 <div class="container shop-layout section">
-  <button class="btn btn-outline filter-toggle" type="button" data-filter-toggle>التصفية والترتيب</button>
-  <aside class="filters panel" data-filters>
+  <button class="btn btn-outline filter-toggle" type="button" data-filter-toggle aria-expanded="false" aria-controls="product-filters">التصفية والترتيب</button>
+  <aside class="filters panel" data-filters id="product-filters">
     <form method="get" action="{% if selected_category %}{{ selected_category.get_absolute_url }}{% else %}{% url 'products:list' %}{% endif %}">
       <div class="filter-head"><h2>صفّي النتائج</h2><button type="button" class="mobile-only" data-filter-close>×</button></div>
       <label for="shop-q">البحث</label><input id="shop-q" name="q" value="{{ request.GET.q }}" placeholder="اسم المنتج">

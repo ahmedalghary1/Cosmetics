@@ -4,10 +4,12 @@ import uuid
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import F, Q
 from django.urls import reverse
 from django.utils import timezone
 
 from core.models import TimeStampedModel
+from core.storage import private_media_storage
 from core.validators import validate_image_upload
 
 
@@ -19,11 +21,20 @@ class ShippingZone(TimeStampedModel):
     )
     is_active = models.BooleanField("نشطة", default=True)
     order = models.PositiveSmallIntegerField("الترتيب", default=0)
+    estimated_delivery_min_days = models.PositiveSmallIntegerField("أقل مدة للتوصيل", default=2)
+    estimated_delivery_max_days = models.PositiveSmallIntegerField("أقصى مدة للتوصيل", default=5)
 
     class Meta:
         ordering = ["order", "name"]
         verbose_name = "منطقة شحن"
         verbose_name_plural = "مناطق الشحن"
+        constraints = [
+            models.CheckConstraint(condition=Q(shipping_cost__gte=0), name="shipping_cost_nonnegative"),
+            models.CheckConstraint(
+                condition=Q(estimated_delivery_max_days__gte=F("estimated_delivery_min_days")),
+                name="shipping_delivery_days_ordered",
+            ),
+        ]
 
     def __str__(self):
         return self.name
@@ -40,17 +51,36 @@ class Coupon(TimeStampedModel):
         "قيمة الخصم", max_digits=9, decimal_places=2,
         validators=[MinValueValidator(Decimal("0.01"))],
     )
-    minimum_order = models.DecimalField("الحد الأدنى للطلب", max_digits=10, decimal_places=2, default=0)
+    minimum_order = models.DecimalField(
+        "الحد الأدنى للطلب", max_digits=10, decimal_places=2, default=0,
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
     start_date = models.DateTimeField("تاريخ البداية")
     end_date = models.DateTimeField("تاريخ النهاية")
     usage_limit = models.PositiveIntegerField("حد الاستخدام", null=True, blank=True)
+    max_uses_per_customer = models.PositiveIntegerField("حد الاستخدام لكل عميل", null=True, blank=True)
     used_count = models.PositiveIntegerField("مرات الاستخدام", default=0, editable=False)
+    products = models.ManyToManyField(
+        "products.Product", verbose_name="منتجات محددة", related_name="coupons", blank=True,
+    )
+    categories = models.ManyToManyField(
+        "products.Category", verbose_name="تصنيفات محددة", related_name="coupons", blank=True,
+    )
     is_active = models.BooleanField("نشط", default=True)
 
     class Meta:
         verbose_name = "كوبون خصم"
         verbose_name_plural = "كوبونات الخصم"
         indexes = [models.Index(fields=["code", "is_active"])]
+        constraints = [
+            models.CheckConstraint(condition=Q(value__gt=0), name="coupon_value_positive"),
+            models.CheckConstraint(condition=Q(minimum_order__gte=0), name="coupon_minimum_nonnegative"),
+            models.CheckConstraint(condition=Q(end_date__gt=F("start_date")), name="coupon_dates_ordered"),
+            models.CheckConstraint(
+                condition=~Q(discount_type="percentage") | Q(value__lte=100),
+                name="coupon_percentage_lte_100",
+            ),
+        ]
 
     def clean(self):
         from django.core.exceptions import ValidationError
@@ -97,22 +127,28 @@ class Order(TimeStampedModel):
         PENDING = "pending_verification", "في انتظار مراجعة التحويل"
         VERIFIED = "verified", "تم تأكيد الدفع"
         REJECTED = "rejected", "تم رفض إثبات الدفع"
+        REFUNDED = "refunded", "تم رد المبلغ"
 
     class Status(models.TextChoices):
         NEW = "new", "طلب جديد"
+        AWAITING_PAYMENT = "awaiting_payment", "في انتظار الدفع"
         CONFIRMED = "confirmed", "تم التأكيد"
         PREPARING = "preparing", "جاري التجهيز"
         SHIPPED = "shipped", "تم الشحن"
         DELIVERED = "delivered", "تم التسليم"
         CANCELLED = "cancelled", "ملغي"
+        PAYMENT_FAILED = "payment_failed", "فشل الدفع"
+        REFUNDED = "refunded", "مسترد"
 
     order_number = models.CharField("رقم الطلب", max_length=30, unique=True, db_index=True)
+    idempotency_key = models.UUIDField("مفتاح عدم التكرار", default=uuid.uuid4, unique=True, editable=False)
     access_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="المستخدم", related_name="orders",
         on_delete=models.SET_NULL, null=True, blank=True,
     )
     full_name = models.CharField("الاسم بالكامل", max_length=150)
+    email = models.EmailField("البريد الإلكتروني", blank=True)
     phone = models.CharField("رقم الهاتف", max_length=30, db_index=True)
     alternative_phone = models.CharField("رقم إضافي", max_length=30, blank=True)
     governorate = models.ForeignKey(
@@ -131,7 +167,7 @@ class Order(TimeStampedModel):
     payment_status = models.CharField("حالة الدفع", max_length=30, choices=PaymentStatus.choices)
     payment_receipt = models.ImageField(
         "إثبات التحويل", upload_to="payment_receipts/%Y/%m/", blank=True,
-        validators=[validate_image_upload],
+        validators=[validate_image_upload], storage=private_media_storage,
     )
     payment_note = models.TextField("ملاحظة مراجعة الدفع", blank=True)
     status = models.CharField(
@@ -139,6 +175,16 @@ class Order(TimeStampedModel):
         default=Status.NEW, db_index=True,
     )
     stock_released = models.BooleanField(default=False, editable=False)
+    reservation_expires_at = models.DateTimeField("انتهاء حجز المخزون", null=True, blank=True, db_index=True)
+    terms_version = models.CharField("نسخة الشروط", max_length=30, blank=True)
+    terms_accepted_at = models.DateTimeField("وقت الموافقة على الشروط", null=True, blank=True)
+    confirmed_at = models.DateTimeField("وقت التأكيد", null=True, blank=True)
+    shipped_at = models.DateTimeField("وقت الشحن", null=True, blank=True)
+    delivered_at = models.DateTimeField("وقت التسليم", null=True, blank=True)
+    cancelled_at = models.DateTimeField("وقت الإلغاء/الفشل", null=True, blank=True)
+    sales_counted = models.BooleanField(default=False, editable=False)
+    coupon_consumed = models.BooleanField(default=False, editable=False)
+    refunded_amount = models.DecimalField("المبلغ المسترد", max_digits=11, decimal_places=2, default=0)
 
     class Meta:
         ordering = ["-created_at"]
@@ -147,6 +193,21 @@ class Order(TimeStampedModel):
         indexes = [
             models.Index(fields=["-created_at", "status"]),
             models.Index(fields=["payment_status", "-created_at"]),
+        ]
+        constraints = [
+            models.CheckConstraint(condition=Q(subtotal__gte=0), name="order_subtotal_nonnegative"),
+            models.CheckConstraint(condition=Q(discount__gte=0), name="order_discount_nonnegative"),
+            models.CheckConstraint(condition=Q(shipping_cost__gte=0), name="order_shipping_nonnegative"),
+            models.CheckConstraint(condition=Q(total__gte=0), name="order_total_nonnegative"),
+            models.CheckConstraint(condition=Q(discount__lte=F("subtotal")), name="order_discount_lte_subtotal"),
+            models.CheckConstraint(condition=Q(refunded_amount__gte=0), name="order_refund_nonnegative"),
+            models.CheckConstraint(condition=Q(refunded_amount__lte=F("total")), name="order_refund_lte_total"),
+        ]
+        permissions = [
+            ("transition_order", "Can transition order status"),
+            ("verify_payment", "Can verify order payment"),
+            ("view_payment_receipt", "Can view private payment receipt"),
+            ("view_financial_reports", "Can view financial reports"),
         ]
 
     def get_success_url(self):
@@ -162,15 +223,163 @@ class OrderItem(models.Model):
         "products.Product", verbose_name="المنتج", related_name="order_items",
         on_delete=models.SET_NULL, null=True,
     )
+    variant = models.ForeignKey(
+        "products.ProductVariant", verbose_name="الخيار", related_name="order_items",
+        on_delete=models.SET_NULL, null=True, blank=True,
+    )
     product_name = models.CharField("اسم المنتج", max_length=180)
+    variant_name = models.CharField("وصف الخيار", max_length=220, blank=True)
     sku = models.CharField("SKU", max_length=60)
     quantity = models.PositiveIntegerField("الكمية")
     unit_price = models.DecimalField("سعر الوحدة", max_digits=10, decimal_places=2)
     total_price = models.DecimalField("الإجمالي", max_digits=11, decimal_places=2)
+    unit_cost = models.DecimalField("تكلفة الوحدة", max_digits=10, decimal_places=2, default=0)
+    total_cost = models.DecimalField("إجمالي التكلفة", max_digits=11, decimal_places=2, default=0)
 
     class Meta:
         verbose_name = "عنصر طلب"
         verbose_name_plural = "عناصر الطلب"
+        constraints = [
+            models.CheckConstraint(condition=Q(quantity__gt=0), name="order_item_quantity_positive"),
+            models.CheckConstraint(condition=Q(unit_price__gte=0), name="order_item_price_nonnegative"),
+            models.CheckConstraint(condition=Q(total_price__gte=0), name="order_item_total_nonnegative"),
+            models.CheckConstraint(condition=Q(unit_cost__gte=0), name="order_item_cost_nonnegative"),
+            models.CheckConstraint(condition=Q(total_cost__gte=0), name="order_item_total_cost_nonnegative"),
+        ]
 
     def __str__(self):
         return f"{self.product_name} × {self.quantity}"
+
+
+class InventoryReservation(TimeStampedModel):
+    class Status(models.TextChoices):
+        ACTIVE = "active", "نشط"
+        CONSUMED = "consumed", "تم الخصم"
+        RELEASED = "released", "تم التحرير"
+        EXPIRED = "expired", "منتهي"
+
+    order = models.ForeignKey(Order, verbose_name="الطلب", related_name="reservations", on_delete=models.CASCADE)
+    product = models.ForeignKey(
+        "products.Product", verbose_name="المنتج", related_name="reservations", on_delete=models.PROTECT,
+    )
+    variant = models.ForeignKey(
+        "products.ProductVariant", verbose_name="الخيار", related_name="reservations",
+        on_delete=models.PROTECT, null=True, blank=True,
+    )
+    quantity = models.PositiveIntegerField("الكمية")
+    reserved_until = models.DateTimeField("محجوز حتى", db_index=True)
+    status = models.CharField("الحالة", max_length=16, choices=Status.choices, default=Status.ACTIVE, db_index=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(quantity__gt=0), name="reservation_quantity_positive"),
+            models.UniqueConstraint(
+                fields=["order", "product", "variant"],
+                condition=Q(variant__isnull=False),
+                name="unique_order_variant_reservation",
+            ),
+            models.UniqueConstraint(
+                fields=["order", "product"],
+                condition=Q(variant__isnull=True),
+                name="unique_order_product_reservation",
+            ),
+        ]
+        indexes = [models.Index(fields=["status", "reserved_until"])]
+        verbose_name = "حجز مخزون"
+        verbose_name_plural = "حجوزات المخزون"
+
+
+class ReservationBatchAllocation(models.Model):
+    reservation = models.ForeignKey(
+        InventoryReservation, related_name="batch_allocations", on_delete=models.CASCADE,
+    )
+    batch = models.ForeignKey(
+        "products.InventoryBatch", related_name="reservation_allocations", on_delete=models.PROTECT,
+    )
+    quantity = models.PositiveIntegerField("الكمية")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["reservation", "batch"], name="unique_reservation_batch"),
+            models.CheckConstraint(condition=Q(quantity__gt=0), name="allocation_quantity_positive"),
+        ]
+
+
+class CouponRedemption(TimeStampedModel):
+    class Status(models.TextChoices):
+        RESERVED = "reserved", "محجوز"
+        CONSUMED = "consumed", "مستخدم"
+        RELEASED = "released", "محرر"
+
+    coupon = models.ForeignKey(Coupon, related_name="redemptions", on_delete=models.PROTECT)
+    order = models.OneToOneField(Order, related_name="coupon_redemption", on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="coupon_redemptions",
+        on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    customer_key = models.CharField(max_length=160, db_index=True)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.RESERVED, db_index=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["coupon", "customer_key", "status"])]
+
+
+class OrderAuditLog(models.Model):
+    order = models.ForeignKey(Order, related_name="audit_logs", on_delete=models.CASCADE)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="order_audit_logs",
+        on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    action = models.CharField(max_length=80)
+    old_values = models.JSONField(default=dict, blank=True)
+    new_values = models.JSONField(default=dict, blank=True)
+    note = models.TextField(blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class ReturnRequest(TimeStampedModel):
+    class Status(models.TextChoices):
+        REQUESTED = "requested", "قيد المراجعة"
+        APPROVED = "approved", "مقبول"
+        REJECTED = "rejected", "مرفوض"
+        RECEIVED = "received", "تم استلام المرتجع"
+        REFUNDED = "refunded", "تم رد المبلغ"
+
+    order = models.ForeignKey(
+        Order, verbose_name="الطلب", related_name="return_requests", on_delete=models.PROTECT,
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="return_requests", on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    reason = models.CharField("سبب الإرجاع", max_length=180)
+    customer_note = models.TextField("تفاصيل العميل", blank=True)
+    admin_note = models.TextField("ملاحظات الإدارة", blank=True)
+    status = models.CharField(
+        "الحالة", max_length=16, choices=Status.choices,
+        default=Status.REQUESTED, db_index=True,
+    )
+    refund_amount = models.DecimalField("المبلغ المسترد", max_digits=11, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(condition=Q(refund_amount__gte=0), name="return_refund_nonnegative"),
+        ]
+
+
+class ReturnRequestItem(models.Model):
+    return_request = models.ForeignKey(ReturnRequest, related_name="items", on_delete=models.CASCADE)
+    order_item = models.ForeignKey(OrderItem, related_name="return_items", on_delete=models.PROTECT)
+    quantity = models.PositiveIntegerField("الكمية")
+    restockable = models.BooleanField("صالح للإعادة إلى المخزون", default=False)
+    restocked = models.BooleanField(default=False, editable=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["return_request", "order_item"], name="unique_return_order_item"),
+            models.CheckConstraint(condition=Q(quantity__gt=0), name="return_item_quantity_positive"),
+        ]

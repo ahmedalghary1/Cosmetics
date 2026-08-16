@@ -1,16 +1,37 @@
 from django.contrib import messages
-from django.contrib.auth import login, update_session_auth_hash
+from django.contrib.auth import login, update_session_auth_hash, views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
+from django.utils.decorators import method_decorator
 
 from products.models import Product
+from core.models import StoreSettings
+from core.rate_limit import rate_limit
+from core.utils import safe_redirect_target
 
-from .forms import ArabicPasswordChangeForm, ProfileForm, RegistrationForm
+from .forms import ArabicAuthenticationForm, ArabicPasswordChangeForm, ProfileForm, RegistrationForm
 from .models import WishlistItem
 
 
+@method_decorator(rate_limit("login", limit=10, window=300), name="dispatch")
+class RateLimitedLoginView(auth_views.LoginView):
+    template_name = "registration/login.html"
+    authentication_form = ArabicAuthenticationForm
+
+
+@method_decorator(rate_limit("password-reset", limit=5, window=3600), name="dispatch")
+class BrandedPasswordResetView(auth_views.PasswordResetView):
+    template_name = "registration/password_reset_form.html"
+    email_template_name = "registration/password_reset_email.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.extra_email_context = {"store_name": StoreSettings.load().store_name}
+        return super().dispatch(request, *args, **kwargs)
+
+
+@rate_limit("register", limit=5, window=3600)
 def register(request):
     if request.user.is_authenticated:
         return redirect("accounts:profile")
@@ -58,7 +79,9 @@ def change_password(request):
 
 @login_required
 def wishlist(request):
-    items = request.user.wishlist_items.select_related("product", "product__category")
+    items = request.user.wishlist_items.filter(
+        product__is_active=True, product__category__is_active=True,
+    ).select_related("product", "product__category")
     return render(request, "accounts/wishlist.html", {"wishlist_items": items})
 
 
@@ -77,4 +100,4 @@ def wishlist_toggle(request, product_id):
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
         return JsonResponse({"message": message, "active": active})
     messages.success(request, message)
-    return redirect(request.POST.get("next") or "accounts:wishlist")
+    return redirect(safe_redirect_target(request, request.POST.get("next"), "accounts:wishlist"))

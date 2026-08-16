@@ -1,6 +1,6 @@
 # متجر لُمعة للعناية والجمال
 
-متجر إلكتروني عربي RTL مبني بـ Django، خفيف وقابل للنشر على استضافة محدودة الموارد. يدعم تصفح المنتجات والبحث والتصفية، سلة جلسات، Checkout كضيف، الدفع عند الاستلام أو تحويل InstaPay يدوي، حسابات العملاء والمفضلة، ولوحة إدارة عربية مخصصة.
+متجر إلكتروني عربي RTL مبني بـ Django، خفيف وقابل للنشر على استضافة محدودة الموارد. يدعم تصفح المنتجات والبحث والتصفية، عروضًا مجدولة بمنتجات مختارة، سلة جلسات، Checkout كضيف، الدفع عند الاستلام أو تحويل InstaPay يدوي، حسابات العملاء والمفضلة، ولوحة إدارة عربية مخصصة.
 
 ## المعمارية
 
@@ -28,8 +28,9 @@ Cosmetics/
 - `ShippingZone` و`Coupon` يرتبطان بالطلب.
 - `User` يرتبط اختياريًا بالطلبات، ويرتبط بـ `WishlistItem` و`Profile`.
 - `StoreSettings` سجل وحيد يتحكم في العلامة والعملة وبيانات InstaPay والتواصل.
+- `Offer` يجمع المنتجات المخفضة داخل حملة قابلة للجدولة والترتيب والإيقاف من لوحة التحكم.
 
-إنشاء الطلب يتم داخل معاملة قاعدة بيانات واحدة. تُقفل صفوف المنتجات قبل فحص الكمية وخصم المخزون للحد من السباقات، ولا تُقبل أي أسعار أو إجماليات من JavaScript. عند إلغاء الطلب تعاد الكميات مرة واحدة فقط.
+إنشاء الطلب يتم داخل معاملة SQLite قصيرة بمفتاح Idempotency. حجز المخزون يستخدم `UPDATE ... WHERE stock >= reserved + quantity` الذري بدل الاعتماد على `select_for_update` غير الفعال في SQLite. يُخصم المخزون فعليًا عند التأكيد، ويُحرر الحجز عند الإلغاء أو فشل الدفع أو انتهاء المهلة. كل الأسعار والإجماليات تعاد حسابها في الخادم.
 
 ## المسارات المهمة
 
@@ -46,7 +47,7 @@ Cosmetics/
 ## المتطلبات
 
 - Python 3.11 أو أحدث.
-- SQLite للتطوير. يمكن استخدام PostgreSQL عبر `DATABASE_URL` دون تعديل الكود.
+- SQLite 3 هي قاعدة البيانات الوحيدة للتطوير والإنتاج.
 
 ## التشغيل محليًا
 
@@ -87,14 +88,17 @@ python manage.py runserver
 انسخ `.env.example` إلى `.env` أو عرّف القيم في منصة الاستضافة. يقرأ المشروع ملف `.env` البسيط مباشرة دون مكتبة إضافية، وتبقى قيم بيئة النظام صاحبة الأولوية.
 
 ```env
-SECRET_KEY=a-long-random-secret
+DJANGO_SECRET_KEY=a-long-random-secret
 DEBUG=False
 ALLOWED_HOSTS=example.com,www.example.com
 CSRF_TRUSTED_ORIGINS=https://example.com,https://www.example.com
-DATABASE_URL=postgresql://user:password@host:5432/database
+SQLITE_PATH=/persistent-data/db.sqlite3
+SQLITE_TIMEOUT=20
+SQLITE_ENABLE_WAL=True
+PRIVATE_MEDIA_ROOT=/persistent-data/private_media
 ```
 
-عند عدم وجود `DATABASE_URL` يستخدم المشروع `db.sqlite3`. في PostgreSQL يُفضّل إبقاء `DB_SSLMODE=require` إذا كانت الخدمة تفرض TLS.
+يجب وضع ملف SQLite ومجلدي `media` و`private_media` على قرص دائم، وتشغيل نسخة تطبيق واحدة فقط. وضع WAL مناسب على قرص محلي دائم؛ لا تفعّله فوق NFS أو نظام ملفات مشترك غير موثوق.
 
 ## الملفات الثابتة والصور
 
@@ -132,6 +136,24 @@ gunicorn config.wsgi:application
 يمكن تفعيل `SECURE_HSTS_PRELOAD=True` بعد التأكد أن النطاق وكل نطاقاته الفرعية ستعمل عبر HTTPS دائمًا؛ التفعيل المبكر قد يصعب التراجع عنه.
 
 ## الاختبارات
+
+## النسخ الاحتياطي والاستعادة
+
+ينشئ الأمر التالي نسخة SQLite متسقة أثناء التشغيل، ينفذ `integrity_check`، ويحتفظ بآخر 10 نسخ:
+
+```bash
+python manage.py backup_database --output-dir /persistent-backups --keep 10
+```
+
+جدوله يوميًا، وانسخ كذلك `media` و`private_media` إلى موقع منفصل مشفر. للاستعادة: أوقف نسخة التطبيق الوحيدة، احتفظ بنسخة من الملف الحالي، انسخ النسخة المتحققة إلى `SQLITE_PATH`، شغّل `python manage.py migrate`، ثم تحقق بـ `PRAGMA integrity_check` قبل إعادة الخدمة.
+
+يجب أيضًا جدولة:
+
+```bash
+python manage.py release_expired_reservations
+```
+
+كل دقيقة لتحرير حجوزات المخزون والقسائم المنتهية. أنشئ الأدوار الإدارية أو حدثها بأمان عبر `python manage.py setup_roles`.
 
 ```bash
 python manage.py test

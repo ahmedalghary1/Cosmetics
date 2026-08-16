@@ -6,6 +6,8 @@ venv/
 db.sqlite3
 media/*
 !media/.gitkeep
+private_media/
+backups/
 staticfiles/
 .coverage
 .pytest_cache/

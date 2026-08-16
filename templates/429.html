@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% block title %}محاولات كثيرة | {{ store_settings.store_name }}{% endblock %}{% block content %}<section class="error-page container"><span>429</span><h1>محاولات كثيرة خلال وقت قصير</h1><p>انتظر قليلًا ثم حاول مرة أخرى.</p><a class="btn btn-primary" href="{% url 'core:home' %}">العودة للرئيسية</a></section>{% endblock %}

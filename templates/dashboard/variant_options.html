@@ -1,0 +1,4 @@
+{% extends "dashboard/base.html" %}{% block title %}قيم الخيارات{% endblock %}{% block dashboard_content %}
+<div class="dashboard-heading"><div><p>الكتالوج</p><h1>قيم الخيارات</h1></div><a class="btn btn-primary" href="{% url 'dashboard:variant_option_add' %}">إضافة قيمة</a></div>
+<section class="dashboard-panel"><div class="table-wrap"><table><thead><tr><th>النوع</th><th>القيمة</th><th></th></tr></thead><tbody>{% for option in options %}<tr><td>{{ option.get_option_type_display }}</td><td>{{ option.value }}</td><td><a href="{% url 'dashboard:variant_option_edit' option.pk %}">تعديل</a></td></tr>{% empty %}<tr><td colspan="3">لا توجد قيم بعد.</td></tr>{% endfor %}</tbody></table></div></section>
+{% endblock %}

@@ -1,8 +1,9 @@
 from django import forms
+from django.contrib.auth import get_user_model
 
-from core.models import Banner, ContentPage, RoutineStep, SocialGalleryImage, StoreSettings
-from orders.models import Coupon, Order, ShippingZone
-from products.models import Category, Product
+from core.models import Banner, ContentPage, Offer, RoutineStep, SocialGalleryImage, StoreSettings
+from orders.models import Coupon, Order, ReturnRequest, ShippingZone
+from products.models import Category, InventoryBatch, Product, ProductVariant, VariantOption
 from core.image_utils import optimize_uploaded_image
 
 
@@ -26,7 +27,10 @@ class ProductForm(StyledModelForm):
         model = Product
         fields = [
             "name", "slug", "sku", "category", "short_description", "description",
-            "price", "old_price", "stock_quantity", "main_image", "ingredients", "usage",
+            "price", "old_price", "stock_quantity", "has_variants", "main_image", "ingredients", "usage",
+            "brand", "country_of_origin", "key_ingredients", "benefits", "warnings",
+            "suitable_for", "skin_types", "hair_types", "size_label", "pao_months",
+            "cruelty_free", "vegan",
             "is_active", "is_featured", "is_best_seller", "is_new", "meta_title", "meta_description",
         ]
         widgets = {
@@ -47,7 +51,10 @@ class CategoryForm(StyledModelForm):
 class ShippingZoneForm(StyledModelForm):
     class Meta:
         model = ShippingZone
-        fields = ["name", "shipping_cost", "is_active", "order"]
+        fields = [
+            "name", "shipping_cost", "estimated_delivery_min_days",
+            "estimated_delivery_max_days", "is_active", "order",
+        ]
 
 
 class CouponForm(StyledModelForm):
@@ -56,17 +63,86 @@ class CouponForm(StyledModelForm):
         fields = [
             "code", "discount_type", "value", "minimum_order", "start_date",
             "end_date", "usage_limit", "is_active",
+            "max_uses_per_customer", "products", "categories",
         ]
         widgets = {
             "start_date": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
             "end_date": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
+            "products": forms.SelectMultiple(attrs={"size": 8}),
+            "categories": forms.SelectMultiple(attrs={"size": 6}),
         }
+
+
+class ProductVariantForm(StyledModelForm):
+    class Meta:
+        model = ProductVariant
+        fields = [
+            "sku", "options", "option_summary", "price", "old_price",
+            "stock_quantity", "barcode", "weight_grams", "is_active",
+        ]
+        widgets = {"options": forms.SelectMultiple(attrs={"size": 7})}
+
+
+class VariantOptionForm(StyledModelForm):
+    class Meta:
+        model = VariantOption
+        fields = ["option_type", "value", "order"]
+
+
+class InventoryBatchForm(StyledModelForm):
+    class Meta:
+        model = InventoryBatch
+        fields = [
+            "product", "variant", "batch_number", "quantity", "manufacturing_date",
+            "expiry_date", "received_date", "purchase_cost", "is_active",
+        ]
+        widgets = {
+            "manufacturing_date": forms.DateInput(attrs={"type": "date"}),
+            "expiry_date": forms.DateInput(attrs={"type": "date"}),
+            "received_date": forms.DateInput(attrs={"type": "date"}),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        product = cleaned.get("product")
+        variant = cleaned.get("variant")
+        if variant and product and variant.product_id != product.pk:
+            self.add_error("variant", "الخيار لا يتبع المنتج المحدد.")
+        return cleaned
 
 
 class BannerForm(StyledModelForm):
     class Meta:
         model = Banner
         fields = ["position", "title", "subtitle", "button_text", "button_url", "image", "is_active", "order"]
+
+
+class OfferForm(StyledModelForm):
+    class Meta:
+        model = Offer
+        fields = [
+            "eyebrow", "title", "subtitle", "products", "button_text", "button_url",
+            "starts_at", "ends_at", "is_active", "order",
+        ]
+        widgets = {
+            "products": forms.SelectMultiple(attrs={"size": 10}),
+            "starts_at": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
+            "ends_at": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["products"].queryset = Product.objects.select_related("category").order_by("name")
+        self.fields["products"].help_text = "اختاري منتجًا واحدًا أو أكثر. استخدمي Ctrl (أو Command) لاختيار عدة منتجات."
+
+    def clean_products(self):
+        products = self.cleaned_data["products"]
+        invalid = [product.name for product in products if not product.old_price or product.old_price <= product.price]
+        if invalid:
+            raise forms.ValidationError(
+                "أضيفي سعرًا قديمًا أعلى من السعر الحالي لهذه المنتجات أولًا: " + "، ".join(invalid)
+            )
+        return products
 
 
 class ContentPageForm(StyledModelForm):
@@ -99,3 +175,47 @@ class OrderUpdateForm(StyledModelForm):
         model = Order
         fields = ["status", "payment_status", "payment_note"]
         widgets = {"payment_note": forms.Textarea(attrs={"rows": 3})}
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user and not user.is_superuser:
+            if not user.has_perm("orders.transition_order"):
+                self.fields["status"].disabled = True
+            if not user.has_perm("orders.verify_payment"):
+                self.fields["payment_status"].disabled = True
+                self.fields["payment_note"].disabled = True
+
+
+class ReturnUpdateForm(StyledModelForm):
+    class Meta:
+        model = ReturnRequest
+        fields = ["status", "refund_amount", "admin_note"]
+        widgets = {"admin_note": forms.Textarea(attrs={"rows": 4})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            for item in self.instance.items.select_related("order_item"):
+                self.fields[f"restockable_{item.pk}"] = forms.BooleanField(
+                    label=f"صالح للإعادة: {item.order_item.product_name} × {item.quantity}",
+                    required=False,
+                    initial=item.restockable,
+                )
+
+    def clean_refund_amount(self):
+        amount = self.cleaned_data["refund_amount"]
+        order = self.instance.order
+        remaining = order.total - order.refunded_amount
+        items_maximum = sum(
+            item.order_item.unit_price * item.quantity for item in self.instance.items.select_related("order_item")
+        )
+        if amount > min(remaining, items_maximum):
+            raise forms.ValidationError("مبلغ الرد أكبر من قيمة المنتجات أو المتبقي في الطلب.")
+        return amount
+
+
+class UserRoleForm(StyledModelForm):
+    class Meta:
+        model = get_user_model()
+        fields = ["groups", "is_staff"]
+        widgets = {"groups": forms.SelectMultiple(attrs={"size": 7})}

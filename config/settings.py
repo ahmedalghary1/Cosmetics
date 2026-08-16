@@ -1,7 +1,8 @@
 import os
 import sys
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+
+from django.core.exceptions import ImproperlyConfigured
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,9 +28,14 @@ def env_bool(name, default=False):
     return os.getenv(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
 
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-change-me-before-production")
 DEBUG = env_bool("DEBUG", True)
 TESTING = "test" in sys.argv
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "").strip()
+if not SECRET_KEY:
+    if DEBUG or TESTING:
+        SECRET_KEY = "django-insecure-development-only-never-use-in-production"
+    else:
+        raise ImproperlyConfigured("DJANGO_SECRET_KEY is required when DEBUG=False.")
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if host.strip()]
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if origin.strip()]
 
@@ -58,6 +64,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.middleware.SecurityHeadersMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -80,26 +87,23 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 
-def database_config():
-    database_url = os.getenv("DATABASE_URL", "").strip()
-    if not database_url:
-        return {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}
-    parsed = urlparse(database_url)
-    if parsed.scheme not in {"postgres", "postgresql"}:
-        raise ValueError("DATABASE_URL must use postgres:// or postgresql://")
-    return {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": unquote(parsed.path.lstrip("/")),
-        "USER": unquote(parsed.username or ""),
-        "PASSWORD": unquote(parsed.password or ""),
-        "HOST": parsed.hostname or "",
-        "PORT": parsed.port or "",
-        "CONN_MAX_AGE": 60,
-        "OPTIONS": {"sslmode": os.getenv("DB_SSLMODE", "prefer")},
+SQLITE_PATH = Path(os.getenv("SQLITE_PATH", BASE_DIR / "db.sqlite3")).expanduser().resolve()
+SQLITE_TIMEOUT = int(os.getenv("SQLITE_TIMEOUT", "20"))
+SQLITE_ENABLE_WAL = env_bool("SQLITE_ENABLE_WAL", False)
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": SQLITE_PATH,
+        "OPTIONS": {"timeout": SQLITE_TIMEOUT, "transaction_mode": "IMMEDIATE"},
     }
+}
 
-
-DATABASES = {"default": database_config()}
+CACHES = {
+    "default": {
+        "BACKEND": os.getenv("CACHE_BACKEND", "django.core.cache.backends.locmem.LocMemCache"),
+        "LOCATION": os.getenv("CACHE_LOCATION", "cosmetics-rate-limits"),
+    }
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -117,7 +121,8 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", BASE_DIR / "media")).expanduser().resolve()
+PRIVATE_MEDIA_ROOT = Path(os.getenv("PRIVATE_MEDIA_ROOT", BASE_DIR / "private_media")).expanduser().resolve()
 
 STORAGES = {
     "default": {"BACKEND": os.getenv("DEFAULT_FILE_STORAGE", "django.core.files.storage.FileSystemStorage")},
@@ -132,6 +137,7 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "accounts:login"
+AUTHENTICATION_BACKENDS = ["accounts.backends.PhoneOrUsernameBackend"]
 LOGIN_REDIRECT_URL = "accounts:profile"
 LOGOUT_REDIRECT_URL = "core:home"
 EMAIL_BACKEND = os.getenv(
@@ -149,6 +155,16 @@ SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
+CONTENT_SECURITY_POLICY = os.getenv(
+    "CONTENT_SECURITY_POLICY",
+    "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self'; "
+    "script-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self'; "
+    "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+)
+PERMISSIONS_POLICY = os.getenv(
+    "PERMISSIONS_POLICY",
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+)
 
 if not DEBUG and not TESTING:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

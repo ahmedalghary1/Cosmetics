@@ -3,8 +3,9 @@ from types import SimpleNamespace
 
 from django.contrib.sessions.backends.db import SessionStore
 from django.test import TestCase
+from django.urls import reverse
 
-from products.models import Category, Product
+from products.models import Category, Product, ProductVariant
 
 from .cart import Cart
 
@@ -28,3 +29,38 @@ class CartTests(TestCase):
     def test_cart_rejects_quantity_above_stock(self):
         with self.assertRaisesMessage(ValueError, "الكمية المطلوبة أكبر"):
             self.cart.add(self.product, 5)
+
+    def test_external_next_redirect_is_blocked(self):
+        response = self.client.post(
+            reverse("cart:add", args=[self.product.pk]),
+            {"quantity": 1, "next": "https://evil.example/phishing"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertNotEqual(response.url, "https://evil.example/phishing")
+
+    def test_reserved_stock_is_not_available_to_cart(self):
+        self.product.reserved_quantity = 3
+        self.product.save(update_fields=["reserved_quantity", "updated_at"])
+        with self.assertRaises(ValueError):
+            self.cart.add(self.product, 2)
+
+    def test_variant_product_requires_variant_and_uses_variant_price(self):
+        self.product.has_variants = True
+        self.product.save(update_fields=["has_variants", "updated_at"])
+        variant = ProductVariant.objects.create(
+            product=self.product, sku="LOT-1-50", option_summary="50 ml",
+            price=Decimal("150"), stock_quantity=2,
+        )
+        with self.assertRaises(ValueError):
+            self.cart.add(self.product, 1)
+        self.cart.add(self.product, 2, variant=variant)
+        item = list(self.cart)[0]
+        self.assertEqual(item["variant"], variant)
+        self.assertEqual(item["total_price"], Decimal("300"))
+
+    def test_inactive_category_product_is_purged_from_existing_cart(self):
+        self.cart.add(self.product, 1)
+        self.product.category.is_active = False
+        self.product.category.save(update_fields=["is_active", "updated_at"])
+        self.assertEqual(list(self.cart), [])
+        self.assertEqual(len(self.cart), 0)

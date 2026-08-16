@@ -7,7 +7,7 @@ from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from core.models import Banner, ContentPage, RoutineStep, SocialGalleryImage, StoreSettings
+from core.models import Banner, ContentPage, Offer, RoutineStep, SocialGalleryImage, StoreSettings
 from orders.models import Coupon, ShippingZone
 from products.models import Category, Product
 
@@ -123,6 +123,24 @@ class Command(BaseCommand):
         promo.is_active = True
         self.attach_if_empty(promo, "image", demo_dir / "ritual-banner.webp", "ritual-banner.webp")
         promo.save()
+
+        offer, _ = Offer.objects.get_or_create(
+            title="عروض لا تفوتك",
+            defaults={
+                "eyebrow": "وقت التدليل",
+                "subtitle": "منتجات مختارة بأسعار أخف لفترة محدودة.",
+                "button_text": "كل العروض",
+                "is_active": True,
+                "order": 1,
+            },
+        )
+        offer.eyebrow = "وقت التدليل"
+        offer.subtitle = "منتجات مختارة بأسعار أخف لفترة محدودة."
+        offer.button_text = "كل العروض"
+        offer.is_active = True
+        offer.order = 1
+        offer.save()
+        offer.products.set(product for product in products if product.old_price)
 
         page_data = {
             "من-نحن": ("من نحن", "لُمعة متجر عناية مصري يختار منتجاته لتكون طقوس الجمال اليومية أبسط وأكثر هدوءًا. نؤمن أن العناية الحقيقية تبدأ بالاختيار الواعي والتجربة السهلة."),

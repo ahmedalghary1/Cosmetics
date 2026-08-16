@@ -10,6 +10,8 @@
     drawer.setAttribute("aria-hidden", String(!open));
     if (overlay) overlay.hidden = !open;
     document.body.classList.toggle("drawer-open", open);
+    qs("[data-menu-open]")?.setAttribute("aria-expanded", String(open));
+    if (open) qs("button, a", drawer)?.focus();
   }
 
   const drawer = qs("[data-mobile-drawer]");
@@ -18,8 +20,35 @@
     setDrawer(drawer, overlay, true);
     event.currentTarget.setAttribute("aria-expanded", "true");
   });
-  qs("[data-menu-close]")?.addEventListener("click", () => setDrawer(drawer, overlay, false));
-  overlay?.addEventListener("click", () => setDrawer(drawer, overlay, false));
+  qs("[data-menu-close]")?.addEventListener("click", () => {
+    setDrawer(drawer, overlay, false);
+    qs("[data-menu-open]")?.focus();
+  });
+  overlay?.addEventListener("click", () => {
+    setDrawer(drawer, overlay, false);
+    filters?.classList.remove("open");
+    qs("[data-filter-toggle]")?.setAttribute("aria-expanded", "false");
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && drawer?.classList.contains("open")) {
+      setDrawer(drawer, overlay, false);
+      qs("[data-menu-open]")?.focus();
+    }
+    if (event.key === "Tab" && drawer?.classList.contains("open")) {
+      const focusable = qsa("a, button, input, select, textarea, [tabindex]:not([tabindex='-1'])", drawer)
+        .filter(element => !element.disabled && !element.hidden);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+  });
 
   const searchDialog = qs("[data-search-dialog]");
   qs("[data-search-open]")?.addEventListener("click", () => {
@@ -55,6 +84,24 @@
     qs("[data-qty-minus]", wrapper)?.addEventListener("click", () => update(-1));
   });
 
+  qsa("[data-variant-form]").forEach(form => {
+    const select = qs("[data-variant-select]", form);
+    if (!select) return;
+    const quantity = qs("input[name=quantity]", form);
+    const price = qs("[data-variant-price]") || qs(".detail-price strong");
+    const stockLine = qs("[data-stock-line]");
+    select.addEventListener("change", () => {
+      const option = select.selectedOptions[0];
+      const stock = Number(option?.dataset.stock || 0);
+      if (quantity) {
+        quantity.max = String(Math.max(stock, 1));
+        quantity.value = "1";
+      }
+      if (price && option?.dataset.price) price.textContent = `${option.dataset.price} ج.م`;
+      if (stockLine && select.value) stockLine.textContent = stock ? `متوفر الآن — ${stock} قطعة` : "غير متوفر حاليًا";
+    });
+  });
+
   async function postForm(form) {
     const response = await fetch(form.action, {
       method: "POST",
@@ -62,7 +109,10 @@
       headers: { "X-Requested-With": "XMLHttpRequest" },
       credentials: "same-origin"
     });
-    const data = await response.json();
+    const contentType = response.headers.get("content-type") || "";
+    const data = contentType.includes("application/json")
+      ? await response.json()
+      : { message: response.status === 429 ? "محاولات كثيرة. حاول بعد قليل." : "انتهت الجلسة أو حدث خطأ. حدّث الصفحة وحاول مرة أخرى." };
     if (!response.ok) throw new Error(data.message || "حدث خطأ. حاول مرة أخرى.");
     return data;
   }
@@ -85,13 +135,17 @@
   qsa("[data-ajax-wishlist]").forEach(form => form.addEventListener("submit", async event => {
     event.preventDefault();
     const button = qs("button", form);
+    button.disabled = true;
     try {
       const data = await postForm(form);
       button.classList.toggle("active", data.active);
       button.textContent = data.active ? "♥" : "♡";
+      button.setAttribute("aria-pressed", String(data.active));
       toast(data.message);
     } catch (error) {
       toast(error.message, true);
+    } finally {
+      button.disabled = false;
     }
   }));
 
@@ -109,10 +163,16 @@
   qs("[data-filter-toggle]")?.addEventListener("click", () => {
     filters?.classList.add("open");
     document.body.classList.add("drawer-open");
+    if (overlay) overlay.hidden = false;
+    qs("[data-filter-toggle]")?.setAttribute("aria-expanded", "true");
+    qs("button, input, select", filters)?.focus();
   });
   qs("[data-filter-close]")?.addEventListener("click", () => {
     filters?.classList.remove("open");
     document.body.classList.remove("drawer-open");
+    if (overlay) overlay.hidden = true;
+    qs("[data-filter-toggle]")?.setAttribute("aria-expanded", "false");
+    qs("[data-filter-toggle]")?.focus();
   });
 
   const checkout = qs("[data-checkout]");
@@ -165,9 +225,18 @@
         qs("[data-shipping-cost]", checkout).textContent = `${data.shipping} ج.م`;
         qs("[data-order-total]", checkout).textContent = data.total;
         qs("[data-instapay-total]", checkout).textContent = data.total;
+        const estimate = qs("[data-delivery-estimate]", checkout);
+        if (estimate) estimate.textContent = `التوصيل المتوقع خلال ${data.delivery_min_days}–${data.delivery_max_days} أيام عمل.`;
       } catch {
         toast("تعذر تحديث الشحن. اختاري المحافظة مرة أخرى.", true);
       }
+    });
+
+    checkout.addEventListener("submit", () => {
+      const submit = qs("[data-checkout-submit]", checkout);
+      if (!submit) return;
+      submit.disabled = true;
+      submit.textContent = "جارٍ تثبيت طلبك…";
     });
   }
 
@@ -183,5 +252,12 @@
   qs("[data-dashboard-close]")?.addEventListener("click", () => {
     dashboardSidebar?.classList.remove("open");
     document.body.classList.remove("drawer-open");
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && dashboardSidebar?.classList.contains("open")) {
+      dashboardSidebar.classList.remove("open");
+      document.body.classList.remove("drawer-open");
+      qs("[data-dashboard-open]")?.focus();
+    }
   });
 })();

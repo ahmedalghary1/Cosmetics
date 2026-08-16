@@ -1,5 +1,7 @@
 from django.db import models
+from django.db.models import Q
 from django.urls import reverse
+from django.utils import timezone
 
 from .validators import validate_image_upload
 
@@ -25,10 +27,14 @@ class StoreSettings(TimeStampedModel):
     address = models.CharField("عنوان المتجر", max_length=255, blank=True)
     instapay_account_name = models.CharField("اسم حساب InstaPay", max_length=120, blank=True)
     instapay_address = models.CharField("رقم أو عنوان InstaPay", max_length=120, blank=True)
+    instapay_enabled = models.BooleanField("تفعيل الدفع عبر InstaPay", default=False)
     currency = models.CharField("العملة", max_length=12, default="ج.م")
     free_shipping_threshold = models.DecimalField(
         "حد الشحن المجاني", max_digits=10, decimal_places=2, null=True, blank=True
     )
+    inventory_reservation_minutes = models.PositiveSmallIntegerField("مدة حجز المخزون (دقيقة)", default=30)
+    return_window_days = models.PositiveSmallIntegerField("مدة طلب الإرجاع (يوم)", default=14)
+    terms_version = models.CharField("نسخة الشروط", max_length=30, default="1.0")
     header_announcement = models.CharField(
         "الإعلان العلوي", max_length=255, default="شحن مجاني للطلبات المختارة"
     )
@@ -76,6 +82,66 @@ class Banner(TimeStampedModel):
         verbose_name = "بانر"
         verbose_name_plural = "البانرات"
         indexes = [models.Index(fields=["position", "is_active", "order"])]
+
+    def __str__(self):
+        return self.title
+
+
+class OfferQuerySet(models.QuerySet):
+    def current(self, at=None):
+        at = at or timezone.now()
+        return self.filter(is_active=True).filter(
+            Q(starts_at__isnull=True) | Q(starts_at__lte=at),
+            Q(ends_at__isnull=True) | Q(ends_at__gte=at),
+        )
+
+
+class Offer(TimeStampedModel):
+    eyebrow = models.CharField("النص الصغير", max_length=80, default="وقت التدليل")
+    title = models.CharField("عنوان العرض", max_length=180)
+    subtitle = models.CharField("وصف العرض", max_length=300, blank=True)
+    products = models.ManyToManyField(
+        "products.Product", verbose_name="المنتجات", related_name="offer_campaigns"
+    )
+    button_text = models.CharField("نص زر كل العروض", max_length=60, default="كل العروض")
+    button_url = models.CharField(
+        "رابط مخصص للزر", max_length=255, blank=True,
+        help_text="اتركيه فارغًا لعرض منتجات هذا العرض تلقائيًا.",
+    )
+    starts_at = models.DateTimeField("بداية العرض", null=True, blank=True)
+    ends_at = models.DateTimeField("نهاية العرض", null=True, blank=True)
+    is_active = models.BooleanField("نشط", default=True)
+    order = models.PositiveSmallIntegerField("الترتيب", default=0)
+
+    objects = OfferQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["order", "-created_at"]
+        verbose_name = "عرض"
+        verbose_name_plural = "العروض"
+        indexes = [models.Index(fields=["is_active", "order", "starts_at", "ends_at"])]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.starts_at and self.ends_at and self.ends_at <= self.starts_at:
+            raise ValidationError({"ends_at": "يجب أن تكون نهاية العرض بعد بدايته."})
+
+    def get_url(self):
+        if self.button_url:
+            return self.button_url
+        return f"{reverse('products:list')}?offer={self.pk}"
+
+    @property
+    def display_status(self):
+        if not self.is_active:
+            return "متوقف"
+        now = timezone.now()
+        if self.starts_at and self.starts_at > now:
+            return "مجدول"
+        if self.ends_at and self.ends_at < now:
+            return "منتهي"
+        return "ظاهر الآن"
 
     def __str__(self):
         return self.title

@@ -1,8 +1,9 @@
 from decimal import Decimal
 
 from django.test import TestCase
+from django.core.exceptions import ValidationError
 
-from .models import Category, Product
+from .models import Category, InventoryBatch, Product, ProductVariant
 
 
 class ProductModelTests(TestCase):
@@ -29,3 +30,55 @@ class ProductModelTests(TestCase):
             description="وصف", price=Decimal("50.00"), stock_quantity=0,
         )
         self.assertFalse(product.in_stock)
+
+    def test_negative_price_is_rejected(self):
+        product = Product(
+            name="منتج بسعر خاطئ", sku="NEG-PRICE", category=self.category,
+            description="وصف", price=Decimal("-1.00"), stock_quantity=1,
+        )
+        with self.assertRaises(ValidationError):
+            product.full_clean()
+
+    def test_negative_stock_is_rejected(self):
+        product = Product(
+            name="منتج بمخزون خاطئ", sku="NEG-STOCK", category=self.category,
+            description="وصف", price=Decimal("10.00"), stock_quantity=-1,
+        )
+        with self.assertRaises(ValidationError):
+            product.full_clean()
+
+    def test_reserved_quantity_cannot_exceed_stock(self):
+        product = Product(
+            name="منتج محجوز", sku="RESERVED", category=self.category,
+            description="وصف", price=Decimal("10"), stock_quantity=2, reserved_quantity=3,
+        )
+        with self.assertRaises(ValidationError):
+            product.full_clean()
+
+    def test_variant_uses_parent_price_and_independent_available_stock(self):
+        product = Product.objects.create(
+            name="عطر", sku="PERFUME", category=self.category, description="وصف",
+            price=Decimal("300"), stock_quantity=0, has_variants=True,
+        )
+        variant = ProductVariant.objects.create(
+            product=product, sku="PERFUME-50", option_summary="50 ml",
+            stock_quantity=4, reserved_quantity=1,
+        )
+        self.assertEqual(variant.effective_price, Decimal("300"))
+        self.assertEqual(variant.available_stock, 3)
+        self.assertEqual(product.available_stock, 3)
+
+    def test_batch_variant_must_belong_to_same_product(self):
+        first = Product.objects.create(
+            name="الأول", sku="FIRST", category=self.category, description="x",
+            price=Decimal("10"), has_variants=True,
+        )
+        second = Product.objects.create(
+            name="الثاني", sku="SECOND", category=self.category, description="x", price=Decimal("10"),
+        )
+        variant = ProductVariant.objects.create(
+            product=first, sku="FIRST-S", option_summary="صغير", stock_quantity=1,
+        )
+        batch = InventoryBatch(product=second, variant=variant, batch_number="BAD", quantity=1)
+        with self.assertRaises(ValidationError):
+            batch.full_clean()
