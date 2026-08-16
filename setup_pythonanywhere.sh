@@ -2,6 +2,7 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DATA_DIR="$(dirname "${PROJECT_DIR}")/cosmetics_data"
 PYTHON_BIN="${PYTHON_BIN:-/usr/local/bin/python3.13}"
 VENV_DIR="${VENV_DIR:-${HOME}/.virtualenvs/cosmetics}"
 PA_USERNAME="${PA_USERNAME:-${USER}}"
@@ -28,11 +29,13 @@ DJANGO_SETTINGS_MODULE=config.settings_pythonanywhere "${VENV_DIR}/bin/python" m
 DJANGO_SETTINGS_MODULE=config.settings_pythonanywhere "${VENV_DIR}/bin/python" manage.py collectstatic --noinput
 DJANGO_SETTINGS_MODULE=config.settings_pythonanywhere "${VENV_DIR}/bin/python" manage.py check --deploy
 DJANGO_SETTINGS_MODULE=config.settings_pythonanywhere "${VENV_DIR}/bin/python" manage.py backup_database \
-    --output-dir "${PROJECT_DIR}/backups" --keep 3
+    --output-dir "${DATA_DIR}/backups" --keep 3
 
 echo
 echo "PythonAnywhere preparation completed."
 echo "Virtualenv: ${VENV_DIR}"
+echo "Database:     ${DATA_DIR}/db.sqlite3 (outside the Git checkout)"
+echo "Backups:      ${DATA_DIR}/backups"
 echo "Static mapping: /static/ -> ${PROJECT_DIR}/staticfiles"
 echo "Media mapping:  /media/  -> ${PROJECT_DIR}/media"
 echo "Do not create a mapping for ${PROJECT_DIR}/private_media"

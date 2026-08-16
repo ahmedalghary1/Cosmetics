@@ -140,14 +140,14 @@ gunicorn config.wsgi:application
 ## النشر على PythonAnywhere بالخطة المجانية
 
 المشروع مجهز لمسار WSGI التقليدي في PythonAnywhere. الإعداد الخاص بالمنصة هو
-`config.settings_pythonanywhere` ويستخدم مسارات دائمة داخل مجلد المشروع:
+`config.settings_pythonanywhere`. توضع قاعدة البيانات والنسخ الاحتياطية في مجلد مستقل بجوار مستودع Git، بينما تبقى ملفات العرض داخل مجلد المشروع:
 
 ```text
-/home/YOUR_USERNAME/Cosmetics/data/db.sqlite3   # قاعدة البيانات
+/home/YOUR_USERNAME/cosmetics_data/db.sqlite3  # قاعدة البيانات، خارج Git
+/home/YOUR_USERNAME/cosmetics_data/backups/    # النسخ الاحتياطية، خارج Git
 /home/YOUR_USERNAME/Cosmetics/staticfiles/     # ناتج collectstatic
 /home/YOUR_USERNAME/Cosmetics/media/           # صور المنتجات العامة
 /home/YOUR_USERNAME/Cosmetics/private_media/   # إيصالات الدفع الخاصة
-/home/YOUR_USERNAME/Cosmetics/backups/          # النسخ المحلية
 ```
 
 لا تربط `private_media` بعنوان URL عام؛ إيصالات الدفع تُرسل من View محمي بالصلاحيات.
@@ -170,7 +170,30 @@ bash setup_pythonanywhere.sh
 PYTHON_BIN=/usr/local/bin/python3.12 bash setup_pythonanywhere.sh
 ```
 
-إذا كان `db.sqlite3` القديم موجودًا في جذر المشروع عند أول تشغيل، ينسخه السكريبت إلى `data/db.sqlite3` باستخدام SQLite Backup API ويتحقق من سلامته دون الكتابة فوق قاعدة موجودة. عند النشر من Git لن ينتقل ملف القاعدة لأنه مستبعد؛ ارفعه أولًا من تبويب Files إلى `~/Cosmetics/db.sqlite3`. ارفع كذلك محتويات `media/` إن كنت تريد نقل صور المتجر الحالية.
+إذا كانت القاعدة الحالية موجودة في `~/Cosmetics/data/db.sqlite3` أو `~/Cosmetics/db.sqlite3`، ينسخها السكريبت إلى `~/cosmetics_data/db.sqlite3` باستخدام SQLite Backup API ويتحقق من سلامتها، ولا يكتب مطلقًا فوق قاعدة خارجية موجودة. بعد نجاح النقل يستخدم المتجر المسار الخارجي فقط، ولذلك لا يؤثر `git pull` في بياناته. ارفع كذلك محتويات `media/` إن كنت تريد نقل صور المتجر الحالية.
+
+بعد سحب هذا التحديث على متجر قائم، نفّذ سكربت الإعداد مرة واحدة **قبل Reload** كي تُنقل القاعدة الحالية ويتحدث ملف `.env` تلقائيًا:
+
+```bash
+cd ~/Cosmetics
+bash setup_pythonanywhere.sh
+```
+
+في حسابك الحالي تكون البنية النهائية كالتالي:
+
+```text
+/home/Ahmedalgohary1/Cosmetics/                 # أكواد الموقع
+/home/Ahmedalgohary1/cosmetics_data/db.sqlite3 # قاعدة البيانات خارج Git
+```
+
+لإنشاء كتالوج تجريبي فقط، يتضمن 6 أقسام و10 منتجات و3 عروض دون تغيير اسم المتجر أو بيانات التواصل، نفّذ:
+
+```bash
+cd ~/Cosmetics
+python manage.py seed_catalog_demo --settings=config.settings_pythonanywhere
+```
+
+الأمر آمن للتكرار؛ يعتمد على أسماء الأقسام وأرقام SKU وعناوين العروض لمنع إنشاء نسخ مكررة. استخدم `--no-images` إذا أردت إنشاء السجلات دون نسخ الصور التجريبية إلى مجلد Media.
 
 ### 2. إنشاء Web app
 
@@ -230,7 +253,7 @@ python manage.py setup_roles --settings=config.settings_pythonanywhere
 - احتفظ بآخر ثلاث نسخ فقط على المساحة المجانية، ونزّل نسخة خارج المنصة بعد أي تحديث مهم:
 
   ```bash
-  python manage.py backup_database --output-dir ~/Cosmetics/backups --keep 3 --settings=config.settings_pythonanywhere
+  python manage.py backup_database --output-dir ~/cosmetics_data/backups --keep 3 --settings=config.settings_pythonanywhere
   ```
 
 - التطبيق يعيد توجيه HTTP إلى HTTPS ويستخدم Cookies آمنة. يبقى HSTS لمدة ساعة مبدئيًا، ولا يُفعل Preload على نطاق PythonAnywhere المشترك.
