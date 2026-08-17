@@ -1,10 +1,13 @@
+import importlib
 from datetime import timedelta
 from decimal import Decimal
 
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 from django.utils import timezone
+
+import config.urls as config_urls
 
 from orders.models import ShippingZone
 from orders.models import Order
@@ -27,6 +30,22 @@ class SeedCatalogDemoTests(TestCase):
         self.assertEqual(Category.objects.count(), 6)
         self.assertEqual(Product.objects.filter(sku__startswith="LUM-").count(), 10)
         self.assertEqual(Offer.objects.count(), 3)
+
+
+class MediaFallbackTests(SimpleTestCase):
+    def test_media_url_is_available_when_fallback_is_enabled(self):
+        with self.settings(DEBUG=False, SERVE_MEDIA_FILES=True, MEDIA_URL="/media/", MEDIA_ROOT="/tmp/media"):
+            importlib.reload(config_urls)
+            try:
+                self.assertTrue(
+                    any(
+                        getattr(pattern, "pattern", None) is not None
+                        and "media/" in str(pattern.pattern)
+                        for pattern in config_urls.urlpatterns
+                    )
+                )
+            finally:
+                importlib.reload(config_urls)
 
 
 class PublicPageSmokeTests(TestCase):

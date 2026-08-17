@@ -52,6 +52,7 @@ MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", BASE_DIR / "media")).expanduser().reso
 PRIVATE_MEDIA_ROOT = Path(
     os.getenv("PRIVATE_MEDIA_ROOT", BASE_DIR / "private_media")
 ).expanduser().resolve()
+SERVE_MEDIA_FILES = True
 
 SQLITE_PATH = Path(os.getenv("SQLITE_PATH", DATA_ROOT / "db.sqlite3")).expanduser().resolve()
 if SQLITE_PATH == BASE_DIR or BASE_DIR in SQLITE_PATH.parents:

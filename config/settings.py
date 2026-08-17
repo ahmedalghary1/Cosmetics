@@ -124,6 +124,7 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "/media/"
 MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", BASE_DIR / "media")).expanduser().resolve()
 PRIVATE_MEDIA_ROOT = Path(os.getenv("PRIVATE_MEDIA_ROOT", BASE_DIR / "private_media")).expanduser().resolve()
+SERVE_MEDIA_FILES = env_bool("SERVE_MEDIA_FILES", False)
 
 STORAGES = {
     "default": {
