@@ -28,6 +28,13 @@ def env_bool(name, default=False):
     return os.getenv(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def resolve_path_setting(value, default):
+    candidate = Path(value).expanduser() if value else Path(default)
+    if not candidate.is_absolute():
+        candidate = (BASE_DIR / candidate).resolve()
+    return candidate.resolve()
+
+
 DEBUG = env_bool("DEBUG", True)
 TESTING = "test" in sys.argv
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "&67pl5&8f0t^i88%03zzj^qe#xkpgk@kt-t$z29+-1i^6#kpr2").strip()
@@ -88,7 +95,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 
-SQLITE_PATH = Path(os.getenv("SQLITE_PATH", BASE_DIR / "db.sqlite3")).expanduser().resolve()
+SQLITE_PATH = resolve_path_setting(os.getenv("SQLITE_PATH", BASE_DIR / "db.sqlite3"), BASE_DIR / "db.sqlite3")
 SQLITE_TIMEOUT = int(os.getenv("SQLITE_TIMEOUT", "20"))
 SQLITE_ENABLE_WAL = env_bool("SQLITE_ENABLE_WAL", False)
 DATABASES = {
@@ -119,11 +126,14 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = resolve_path_setting(os.getenv("STATIC_ROOT", BASE_DIR / "staticfiles"), BASE_DIR / "staticfiles")
 STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "/media/"
-MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", BASE_DIR / "media")).expanduser().resolve()
-PRIVATE_MEDIA_ROOT = Path(os.getenv("PRIVATE_MEDIA_ROOT", BASE_DIR / "private_media")).expanduser().resolve()
+MEDIA_ROOT = resolve_path_setting(os.getenv("MEDIA_ROOT", BASE_DIR / "media"), BASE_DIR / "media")
+PRIVATE_MEDIA_ROOT = resolve_path_setting(
+    os.getenv("PRIVATE_MEDIA_ROOT", BASE_DIR / "private_media"),
+    BASE_DIR / "private_media",
+)
 SERVE_MEDIA_FILES = env_bool("SERVE_MEDIA_FILES", False)
 
 STORAGES = {

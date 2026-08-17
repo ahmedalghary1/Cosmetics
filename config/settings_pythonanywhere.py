@@ -47,14 +47,15 @@ DEFAULT_DATA_ROOT = BASE_DIR.parent / "cosmetics_data"
 DATA_ROOT = Path(
     os.getenv("PYTHONANYWHERE_DATA_ROOT", DEFAULT_DATA_ROOT)
 ).expanduser().resolve()
-STATIC_ROOT = Path(os.getenv("STATIC_ROOT", BASE_DIR / "staticfiles")).expanduser().resolve()
-MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", BASE_DIR / "media")).expanduser().resolve()
-PRIVATE_MEDIA_ROOT = Path(
-    os.getenv("PRIVATE_MEDIA_ROOT", BASE_DIR / "private_media")
-).expanduser().resolve()
+STATIC_ROOT = resolve_path_setting(os.getenv("STATIC_ROOT", BASE_DIR / "staticfiles"), BASE_DIR / "staticfiles")
+MEDIA_ROOT = resolve_path_setting(os.getenv("MEDIA_ROOT", BASE_DIR / "media"), BASE_DIR / "media")
+PRIVATE_MEDIA_ROOT = resolve_path_setting(
+    os.getenv("PRIVATE_MEDIA_ROOT", BASE_DIR / "private_media"),
+    BASE_DIR / "private_media",
+)
 SERVE_MEDIA_FILES = True
 
-SQLITE_PATH = Path(os.getenv("SQLITE_PATH", DATA_ROOT / "db.sqlite3")).expanduser().resolve()
+SQLITE_PATH = resolve_path_setting(os.getenv("SQLITE_PATH", DATA_ROOT / "db.sqlite3"), DATA_ROOT / "db.sqlite3")
 if SQLITE_PATH == BASE_DIR or BASE_DIR in SQLITE_PATH.parents:
     raise ImproperlyConfigured(
         "SQLITE_PATH must be outside the Git project directory on PythonAnywhere. "

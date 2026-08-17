@@ -1,6 +1,7 @@
 import importlib
 from datetime import timedelta
 from decimal import Decimal
+from pathlib import Path
 
 from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase
@@ -8,6 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 import config.urls as config_urls
+from config.settings import BASE_DIR, resolve_path_setting
 
 from orders.models import ShippingZone
 from orders.models import Order
@@ -46,6 +48,12 @@ class MediaFallbackTests(SimpleTestCase):
                 )
             finally:
                 importlib.reload(config_urls)
+
+    def test_relative_media_root_is_resolved_from_project_directory(self):
+        resolved = resolve_path_setting("media", BASE_DIR / "media")
+        self.assertTrue(resolved.is_absolute())
+        self.assertTrue(str(resolved).startswith(str(BASE_DIR.resolve())))
+        self.assertTrue(resolved.name == "media")
 
 
 class PublicPageSmokeTests(TestCase):
