@@ -14,14 +14,25 @@ from .settings_production import *  # noqa: F401,F403
 
 DEBUG = False
 
+PUBLIC_PROXY_HOST = os.getenv(
+    "PUBLIC_PROXY_HOST", "aura.ahmedalghary1.workers.dev"
+).strip().lower()
+
 PYTHONANYWHERE_USERNAME = os.getenv("PYTHONANYWHERE_USERNAME", "").strip()
 if PYTHONANYWHERE_USERNAME:
-    pythonanywhere_host = f"{PYTHONANYWHERE_USERNAME}.pythonanywhere.com"
+    pythonanywhere_host = f"{PYTHONANYWHERE_USERNAME}.pythonanywhere.com".lower()
     if pythonanywhere_host not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(pythonanywhere_host)
     pythonanywhere_origin = f"https://{pythonanywhere_host}"
     if pythonanywhere_origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(pythonanywhere_origin)
+
+if PUBLIC_PROXY_HOST:
+    if PUBLIC_PROXY_HOST not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(PUBLIC_PROXY_HOST)
+    public_proxy_origin = f"https://{PUBLIC_PROXY_HOST}"
+    if public_proxy_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(public_proxy_origin)
 
 if not any(host.endswith(".pythonanywhere.com") for host in ALLOWED_HOSTS):
     raise ImproperlyConfigured(

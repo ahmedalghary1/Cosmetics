@@ -30,7 +30,7 @@ def env_bool(name, default=False):
 
 DEBUG = env_bool("DEBUG", True)
 TESTING = "test" in sys.argv
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "").strip()
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "&67pl5&8f0t^i88%03zzj^qe#xkpgk@kt-t$z29+-1i^6#kpr2").strip()
 if not SECRET_KEY:
     if DEBUG or TESTING:
         SECRET_KEY = "django-insecure-development-only-never-use-in-production"

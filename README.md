@@ -266,6 +266,14 @@ python manage.py setup_roles --settings=config.settings_pythonanywhere
 
 ملف `.env.pythonanywhere.example` مرجع فقط؛ `.env` الحقيقي مولد محليًا ومستبعد من Git. لا تنشر قيمة `DJANGO_SECRET_KEY` ولا كلمة مرور البريد.
 
+النطاقان المعتمدان للنشر الحالي هما:
+
+- `https://ahmedalgohary1.pythonanywhere.com/`
+- `https://aura.ahmedalghary1.workers.dev/`
+
+يُضاف نطاق Workers تلقائيًا إلى المضيفين المسموحين ومصادر CSRF الموثوقة من خلال
+`PUBLIC_PROXY_HOST` في إعدادات PythonAnywhere.
+
 ## النسخ الاحتياطي والاستعادة
 
 ينشئ الأمر التالي نسخة SQLite متسقة أثناء التشغيل، ينفذ `integrity_check`، ويحتفظ بآخر 10 نسخ:

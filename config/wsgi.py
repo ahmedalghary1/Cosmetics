@@ -16,11 +16,13 @@ if PROJECT_PATH not in sys.path:
 os.environ["DEBUG"] = "False"
 
 os.environ["ALLOWED_HOSTS"] = (
-    "Ahmedalgohary1.pythonanywhere.com"
+    "ahmedalgohary1.pythonanywhere.com,"
+    "aura.ahmedalghary1.workers.dev"
 )
 
 os.environ["CSRF_TRUSTED_ORIGINS"] = (
-    "https://Ahmedalgohary1.pythonanywhere.com"
+    "https://ahmedalgohary1.pythonanywhere.com,"
+    "https://aura.ahmedalghary1.workers.dev"
 )
 
 

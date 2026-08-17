@@ -17,6 +17,7 @@ ENV_KEYS = (
     "DJANGO_SECRET_KEY",
     "DEBUG",
     "PYTHONANYWHERE_USERNAME",
+    "PUBLIC_PROXY_HOST",
     "ALLOWED_HOSTS",
     "CSRF_TRUSTED_ORIGINS",
     "PYTHONANYWHERE_DATA_ROOT",
@@ -140,11 +141,15 @@ def main() -> None:
     env_path = project_dir / ".env"
     values = read_env(env_path)
     host = f"{username}.pythonanywhere.com"
+    public_proxy_host = values.get(
+        "PUBLIC_PROXY_HOST", "aura.ahmedalghary1.workers.dev"
+    ).strip().lower()
     values.update(
         {
             "DJANGO_SECRET_KEY": safe_secret(values.get("DJANGO_SECRET_KEY", "")),
             "DEBUG": "False",
             "PYTHONANYWHERE_USERNAME": username,
+            "PUBLIC_PROXY_HOST": public_proxy_host,
             "ALLOWED_HOSTS": host,
             "CSRF_TRUSTED_ORIGINS": f"https://{host}",
             "PYTHONANYWHERE_DATA_ROOT": str(data_root),
