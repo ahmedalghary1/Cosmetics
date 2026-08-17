@@ -65,6 +65,26 @@ class DashboardPermissionTests(TestCase):
                 response = self.client.get(reverse(f"dashboard:{name}"))
                 self.assertEqual(response.status_code, 200)
 
+    def test_order_filters_remain_selected_after_submit(self):
+        user = get_user_model().objects.create_superuser(
+            username="filter-admin", password="safe-password", email="filter@example.com",
+        )
+        self.client.force_login(user)
+        response = self.client.get(reverse("dashboard:orders"), {
+            "period": "month",
+            "status": Order.Status.NEW,
+            "payment_method": Order.PaymentMethod.INSTAPAY,
+            "payment_status": Order.PaymentStatus.PENDING,
+        })
+
+        self.assertEqual(response.status_code, 200)
+        for value in (
+            "month", Order.Status.NEW, Order.PaymentMethod.INSTAPAY,
+            Order.PaymentStatus.PENDING,
+        ):
+            with self.subTest(value=value):
+                self.assertContains(response, f'value="{value}" selected')
+
     def test_catalog_manager_can_create_offer(self):
         user = self.user_for_role("Catalog Manager")
         category = Category.objects.create(name="العناية")

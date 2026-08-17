@@ -5,8 +5,9 @@
 <div class="container shop-layout section">
   <button class="btn btn-outline filter-toggle" type="button" data-filter-toggle aria-expanded="false" aria-controls="product-filters">{% icon "sliders-horizontal" %}<span>التصفية والترتيب</span></button>
   <aside class="filters panel" data-filters id="product-filters">
-    <form method="get" action="{% if selected_category %}{{ selected_category.get_absolute_url }}{% else %}{% url 'products:list' %}{% endif %}">
+    <form method="get" action="{{ request.path }}">
       <div class="filter-head"><h2>صفّي النتائج</h2><button type="button" class="mobile-only" data-filter-close aria-label="إغلاق عوامل التصفية">{% icon "x" %}</button></div>
+      {% if selected_offer %}<input type="hidden" name="offer" value="{{ selected_offer.pk }}">{% endif %}
       <label for="shop-q">البحث</label><input id="shop-q" name="q" value="{{ request.GET.q }}" placeholder="اسم المنتج">
       {% if not selected_category %}<label for="filter-category">التصنيف</label><select id="filter-category" name="category"><option value="">كل التصنيفات</option>{% for category in categories %}<option value="{{ category.slug }}" {% if request.GET.category == category.slug %}selected{% endif %}>{{ category.name }}</option>{% endfor %}</select>{% endif %}
       <div class="price-filter"><div><label for="min-price">من</label><input id="min-price" name="min_price" inputmode="decimal" value="{{ request.GET.min_price }}"></div><div><label for="max-price">إلى</label><input id="max-price" name="max_price" inputmode="decimal" value="{{ request.GET.max_price }}"></div></div>
@@ -15,7 +16,7 @@
       <label class="check"><input type="checkbox" name="best" value="1" {% if request.GET.best %}checked{% endif %}> الأكثر مبيعًا</label>
       <label class="check"><input type="checkbox" name="new" value="1" {% if request.GET.new %}checked{% endif %}> وصل حديثًا</label>
       <label for="sort">الترتيب</label><select id="sort" name="sort"><option value="newest" {% if sort == 'newest' %}selected{% endif %}>الأحدث</option><option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>السعر: الأقل أولًا</option><option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>السعر: الأعلى أولًا</option><option value="best" {% if sort == 'best' %}selected{% endif %}>الأكثر مبيعًا</option></select>
-      <button class="btn btn-primary" type="submit">عرض النتائج</button><a class="clear-filter" href="{% if selected_category %}{{ selected_category.get_absolute_url }}{% else %}{% url 'products:list' %}{% endif %}">مسح الفلاتر</a>
+      <button class="btn btn-primary" type="submit">عرض النتائج</button><a class="clear-filter" href="{% if selected_category %}{{ selected_category.get_absolute_url }}{% if selected_offer %}?offer={{ selected_offer.pk }}{% endif %}{% elif selected_offer %}{% url 'products:list' %}?offer={{ selected_offer.pk }}{% else %}{% url 'products:list' %}{% endif %}">مسح الفلاتر</a>
     </form>
   </aside>
   <section class="shop-results"><div class="results-meta"><p>{{ page_obj.paginator.count }} منتج</p></div>{% if page_obj %}<div class="product-grid">{% for product in page_obj %}{% include "includes/_product_card.html" %}{% empty %}{% url 'products:list' as shop_url %}{% include "includes/_empty_state.html" with title="لا توجد منتجات مطابقة لبحثك" text="جرّبي تغيير الفلاتر أو تصفحي كل المنتجات." url=shop_url action="عرض كل المنتجات" %}{% endfor %}</div>{% include "includes/_pagination.html" %}{% endif %}</section>

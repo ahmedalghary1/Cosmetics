@@ -89,6 +89,12 @@ class PublicPageSmokeTests(TestCase):
         products_response = self.client.get(reverse("products:list"), {"offer": offer.pk})
         self.assertContains(products_response, "عرض نهاية الأسبوع")
         self.assertContains(products_response, self.product.name)
+        self.assertContains(
+            products_response,
+            f'<input type="hidden" name="offer" value="{offer.pk}">',
+            html=True,
+        )
+        self.assertContains(products_response, f"?offer={offer.pk}")
 
     def test_scheduled_or_disabled_offer_is_hidden(self):
         future_offer = Offer.objects.create(

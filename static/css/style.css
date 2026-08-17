@@ -217,7 +217,7 @@ textarea.form-control, .field textarea { resize: vertical; }
 .check input { width: 18px; height: 18px; accent-color: var(--primary); }
 .shop-layout { position: relative; display: grid; gap: 24px; }
 .filter-toggle { width: 100%; }
-.filters { position: fixed; inset: auto 0 0; z-index: 180; max-height: 88dvh; padding: 22px; overflow-y: auto; transform: translateY(110%); border-radius: 24px 24px 0 0; transition: transform .3s; }
+.filters { position: fixed; inset: auto 0 0; z-index: 210; max-height: 88dvh; padding: 22px 22px calc(22px + env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; transform: translateY(110%); border-radius: 24px 24px 0 0; transition: transform .3s; }
 .filters.open { transform: translateY(0); }
 .filters form { display: grid; gap: 12px; }
 .filter-head { display: flex; align-items: center; justify-content: space-between; }
@@ -454,6 +454,7 @@ td small { display: block; color: var(--muted); }
 }
 @media (min-width: 850px) {
   .filter-toggle { display: none !important; }
+  .filter-head [data-filter-close] { display: none !important; }
   .hero { min-height: 640px; }
   .hero-content > * { max-width: 510px; }
   .hero-bg { object-position: center; }

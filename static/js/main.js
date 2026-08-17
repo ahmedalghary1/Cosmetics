@@ -16,6 +16,22 @@
 
   const drawer = qs("[data-mobile-drawer]");
   const overlay = qs("[data-drawer-overlay]");
+  const filters = qs("[data-filters]");
+  const filterToggle = qs("[data-filter-toggle]");
+
+  function setFilters(open, restoreFocus = false) {
+    if (!filters) return;
+    filters.classList.toggle("open", open);
+    document.body.classList.toggle("drawer-open", open);
+    if (overlay) overlay.hidden = !open;
+    filterToggle?.setAttribute("aria-expanded", String(open));
+    if (open) {
+      qs("button, input, select", filters)?.focus();
+    } else if (restoreFocus) {
+      filterToggle?.focus();
+    }
+  }
+
   qs("[data-menu-open]")?.addEventListener("click", event => {
     setDrawer(drawer, overlay, true);
     event.currentTarget.setAttribute("aria-expanded", "true");
@@ -25,11 +41,15 @@
     qs("[data-menu-open]")?.focus();
   });
   overlay?.addEventListener("click", () => {
+    const filtersWereOpen = filters?.classList.contains("open");
     setDrawer(drawer, overlay, false);
-    filters?.classList.remove("open");
-    qs("[data-filter-toggle]")?.setAttribute("aria-expanded", "false");
+    setFilters(false, Boolean(filtersWereOpen));
   });
   document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && filters?.classList.contains("open")) {
+      setFilters(false, true);
+      return;
+    }
     if (event.key === "Escape" && drawer?.classList.contains("open")) {
       setDrawer(drawer, overlay, false);
       qs("[data-menu-open]")?.focus();
@@ -162,20 +182,12 @@
     }));
   }
 
-  const filters = qs("[data-filters]");
-  qs("[data-filter-toggle]")?.addEventListener("click", () => {
-    filters?.classList.add("open");
-    document.body.classList.add("drawer-open");
-    if (overlay) overlay.hidden = false;
-    qs("[data-filter-toggle]")?.setAttribute("aria-expanded", "true");
-    qs("button, input, select", filters)?.focus();
-  });
-  qs("[data-filter-close]")?.addEventListener("click", () => {
-    filters?.classList.remove("open");
-    document.body.classList.remove("drawer-open");
-    if (overlay) overlay.hidden = true;
-    qs("[data-filter-toggle]")?.setAttribute("aria-expanded", "false");
-    qs("[data-filter-toggle]")?.focus();
+  filterToggle?.addEventListener("click", () => setFilters(true));
+  qs("[data-filter-close]")?.addEventListener("click", () => setFilters(false, true));
+  window.addEventListener("resize", () => {
+    if (window.innerWidth >= 850 && filters?.classList.contains("open")) {
+      setFilters(false);
+    }
   });
 
   const checkout = qs("[data-checkout]");
