@@ -25,6 +25,8 @@ class RateLimitedLoginView(auth_views.LoginView):
 class BrandedPasswordResetView(auth_views.PasswordResetView):
     template_name = "registration/password_reset_form.html"
     email_template_name = "registration/password_reset_email.html"
+    html_email_template_name = "registration/password_reset_email_html.html"
+    subject_template_name = "registration/password_reset_subject.txt"
 
     def dispatch(self, request, *args, **kwargs):
         self.extra_email_context = {"store_name": StoreSettings.load().store_name}

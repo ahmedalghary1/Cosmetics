@@ -180,6 +180,11 @@ class CheckoutTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("payment_method", form.errors)
 
+    def test_payment_choices_never_include_an_empty_third_option(self):
+        form = self.form()
+        values = [value for value, _label in form.fields["payment_method"].choices]
+        self.assertEqual(values, [Order.PaymentMethod.CASH, Order.PaymentMethod.INSTAPAY])
+
     def test_instapay_receipt_is_required(self):
         data = {**self.base_data, "payment_method": Order.PaymentMethod.INSTAPAY}
         form = self.form(data=data)

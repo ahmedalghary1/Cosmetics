@@ -41,18 +41,27 @@ class CheckoutForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["governorate"].queryset = ShippingZone.objects.filter(is_active=True)
         self.fields["governorate"].empty_label = "اختر المحافظة"
-        self.fields["payment_method"].initial = Order.PaymentMethod.CASH
-        if not (
+        payment_choices = [
+            (Order.PaymentMethod.CASH, Order.PaymentMethod.CASH.label),
+        ]
+        if (
             self.store_settings.instapay_enabled
             and self.store_settings.instapay_account_name.strip()
             and self.store_settings.instapay_address.strip()
         ):
-            self.fields["payment_method"].choices = [
-                choice for choice in Order.PaymentMethod.choices
-                if choice[0] != Order.PaymentMethod.INSTAPAY
-            ]
-        for field in self.fields.values():
-            field.widget.attrs.setdefault("class", "form-control")
+            payment_choices.append(
+                (Order.PaymentMethod.INSTAPAY, Order.PaymentMethod.INSTAPAY.label)
+            )
+        # Model choice fields add an empty option when there is no model default.
+        # Checkout always requires a real payment method, so expose only the two
+        # methods supported by the store.
+        self.fields["payment_method"].choices = payment_choices
+        self.fields["payment_method"].initial = Order.PaymentMethod.CASH
+        for name, field in self.fields.items():
+            if name == "payment_method":
+                field.widget.attrs.setdefault("class", "payment-radio")
+            elif name != "terms_accepted":
+                field.widget.attrs.setdefault("class", "form-control")
 
     def clean_phone(self):
         return validate_phone(self.cleaned_data["phone"])

@@ -27,7 +27,7 @@ class StoreSettings(TimeStampedModel):
     address = models.CharField("عنوان المتجر", max_length=255, blank=True)
     instapay_account_name = models.CharField("اسم حساب InstaPay", max_length=120, blank=True)
     instapay_address = models.CharField("رقم أو عنوان InstaPay", max_length=120, blank=True)
-    instapay_enabled = models.BooleanField("تفعيل الدفع عبر InstaPay", default=False)
+    instapay_enabled = models.BooleanField("تفعيل الدفع عبر InstaPay", default=True)
     currency = models.CharField("العملة", max_length=12, default="ج.م")
     free_shipping_threshold = models.DecimalField(
         "حد الشحن المجاني", max_digits=10, decimal_places=2, null=True, blank=True

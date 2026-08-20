@@ -71,6 +71,8 @@ class AccountTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("متجر الاختبار", mail.outbox[0].body)
+        self.assertIn("/account/password-reset/", mail.outbox[0].body)
+        self.assertEqual(mail.outbox[0].subject, "استعادة كلمة المرور | متجر الاختبار")
 
     def test_inactive_products_are_hidden_from_wishlist(self):
         user = get_user_model().objects.create_user(username="wish", password="safe-password-123")
