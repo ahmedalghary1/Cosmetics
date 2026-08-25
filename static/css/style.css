@@ -95,7 +95,7 @@ p, small, .eyebrow, .section-copy, .product-category, .product-info > p, .routin
 .ui-icon { width: 1.15em; height: 1.15em; flex: 0 0 auto; display: inline-block; overflow: visible; vertical-align: -.18em; }
 .brand-icon { stroke: none; }
 .btn .ui-icon, .text-link .ui-icon, .continue .ui-icon { width: 1.08rem; height: 1.08rem; }
-.btn { display: inline-flex; min-height: 50px; align-items: center; justify-content: center; gap: 10px; border: 1px solid transparent; border-radius: 999px; padding: 11px 27px; font-weight: 700; transition: transform .2s, background .2s, border-color .2s; }
+.btn { display: inline-flex; min-height: 50px; align-items: center; justify-content: center; gap: 10px; border: 1px solid transparent; border-radius: 10px; padding: 11px 27px; font-weight: 700; transition: transform .2s, background .2s, border-color .2s; }
 .btn:hover { transform: translateY(-2px); }
 .btn-primary { background: var(--brand-gradient); color: #fff; box-shadow: 0 10px 24px rgba(89, 53, 25, .22); }
 .btn-primary:hover { background: linear-gradient(135deg, #704624, #593519 62%, #c99768); }
@@ -278,7 +278,7 @@ textarea.form-control, .field textarea { resize: vertical; }
 .clear-filter { text-align: center; color: var(--muted); font-size: .78rem; text-decoration: underline; }
 .results-meta { display: flex; justify-content: space-between; color: var(--muted); font-size: .87rem; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 38px; font-size: .89rem; }
-.pagination a { display: inline-flex; align-items: center; gap: 6px; padding: 8px 15px; border: 1px solid var(--border); border-radius: 50px; background: white; }
+.pagination a { display: inline-flex; align-items: center; gap: 6px; padding: 8px 15px; border: 1px solid var(--border); border-radius: 10px; background: white; }
 .pagination .ui-icon { width: 16px; height: 16px; }
 .breadcrumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 26px; color: var(--muted); font-size: .82rem; }
 .breadcrumbs a:hover { color: var(--primary); }
@@ -309,7 +309,7 @@ textarea.form-control, .field textarea { resize: vertical; }
 .quantity button:hover { background: var(--surface-2); }
 .quantity button .ui-icon { width: 16px; height: 16px; }
 .quantity input { min-width: 0; border: 0; text-align: center; appearance: textfield; }
-.wishlist-wide { width: 100%; min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--border); border-radius: 50px; background: transparent; font-weight: 700; }
+.wishlist-wide { width: 100%; min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--border); border-radius: 10px; background: transparent; font-weight: 700; }
 .wishlist-wide.active { border-color: var(--accent); background: rgba(224, 185, 146, .28); color: var(--primary); }
 .delivery-notes { display: grid; gap: 10px; margin-block: 20px; padding-block: 18px; border-block: 1px solid var(--border); }
 .delivery-notes div { display: grid; }
