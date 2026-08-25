@@ -152,6 +152,61 @@
     }
   }));
 
+  const cartPage = qs("[data-cart-page]");
+  if (cartPage) {
+    const currency = cartPage.dataset.currency || "ج.م";
+    const pendingUpdates = new WeakMap();
+    const renderAmount = value => `${value} ${currency}`;
+
+    async function updateCartLine(form) {
+      const input = qs("input[name=quantity]", form);
+      const button = qs("button[type=submit]", form);
+      const quantityButtons = qsa("[data-qty-plus], [data-qty-minus]", form);
+      const acceptedQuantity = input.dataset.acceptedValue || input.defaultValue;
+      button.disabled = true;
+      input.readOnly = true;
+      quantityButtons.forEach(control => { control.disabled = true; });
+      form.setAttribute("aria-busy", "true");
+      try {
+        const data = await postForm(form);
+        input.dataset.acceptedValue = String(data.quantity);
+        qsa("[data-cart-count]").forEach(badge => badge.textContent = data.cart_count);
+        qs("[data-cart-line-total]", form.closest(".cart-item")).textContent = renderAmount(data.line_total);
+        qs("[data-cart-subtotal]", cartPage).textContent = renderAmount(data.subtotal);
+        const discount = qs("[data-cart-discount]", cartPage);
+        if (discount) discount.textContent = `− ${renderAmount(data.discount)}`;
+        qs("[data-cart-total]", cartPage).textContent = renderAmount(data.total);
+        if (Number(data.quantity) === 0) window.location.reload();
+      } catch (error) {
+        input.value = acceptedQuantity;
+        toast(error.message, true);
+      } finally {
+        button.disabled = false;
+        input.readOnly = false;
+        quantityButtons.forEach(control => { control.disabled = false; });
+        form.removeAttribute("aria-busy");
+      }
+    }
+
+    qsa("[data-cart-update]", cartPage).forEach(form => {
+      const input = qs("input[name=quantity]", form);
+      input.dataset.acceptedValue = input.value;
+      const submitUpdate = () => {
+        window.clearTimeout(pendingUpdates.get(form));
+        pendingUpdates.delete(form);
+        updateCartLine(form);
+      };
+      form.addEventListener("submit", event => {
+        event.preventDefault();
+        submitUpdate();
+      });
+      input.addEventListener("change", () => {
+        window.clearTimeout(pendingUpdates.get(form));
+        pendingUpdates.set(form, window.setTimeout(submitUpdate, 180));
+      });
+    });
+  }
+
   qsa("[data-ajax-wishlist]").forEach(form => form.addEventListener("submit", async event => {
     event.preventDefault();
     const button = qs("button", form);

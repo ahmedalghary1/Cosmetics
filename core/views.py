@@ -18,7 +18,7 @@ def home(request):
         sell_as_bundle=True,
         bundle_product__isnull=False,
         bundle_product__is_active=True,
-    ).select_related("bundle_product")[:8]
+    ).select_related("bundle_product")
     offer = current_offers.filter(sell_as_bundle=False).first()
     if offer:
         offer_products = offer.products.active().select_related("category")[:5]

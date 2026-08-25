@@ -38,6 +38,32 @@ class CartTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertNotEqual(response.url, "https://evil.example/phishing")
 
+    def test_ajax_quantity_update_returns_new_line_and_cart_totals(self):
+        self.client.post(reverse("cart:add", args=[self.product.pk]), {"quantity": 1})
+
+        response = self.client.post(
+            reverse("cart:update", args=[self.product.pk]),
+            {"quantity": 3},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["quantity"], 3)
+        self.assertEqual(response.json()["line_total"], "376.50")
+        self.assertEqual(response.json()["subtotal"], "376.50")
+        self.assertEqual(response.json()["total"], "376.50")
+        self.assertEqual(self.client.session[Cart.SESSION_KEY][f"p:{self.product.pk}"], 3)
+
+    def test_cart_page_exposes_live_total_update_targets(self):
+        self.client.post(reverse("cart:add", args=[self.product.pk]), {"quantity": 1})
+
+        response = self.client.get(reverse("cart:detail"))
+
+        self.assertContains(response, "data-cart-update")
+        self.assertContains(response, "data-cart-line-total")
+        self.assertContains(response, "data-cart-subtotal")
+        self.assertContains(response, "data-cart-total")
+
     def test_reserved_stock_is_not_available_to_cart(self):
         self.product.reserved_quantity = 3
         self.product.save(update_fields=["reserved_quantity", "updated_at"])

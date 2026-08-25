@@ -15,15 +15,17 @@ def detail(request):
     return render(request, "cart/detail.html", {"cart": Cart(request)})
 
 
-def _response(request, message, cart, status=200):
+def _response(request, message, cart, status=200, **extra):
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        return JsonResponse({
+        payload = {
             "message": message,
             "cart_count": len(cart),
             "subtotal": str(cart.subtotal),
             "discount": str(cart.discount),
             "total": str(cart.total_after_discount),
-        }, status=status)
+        }
+        payload.update(extra)
+        return JsonResponse(payload, status=status)
     messages.success(request, message)
     return redirect(safe_redirect_target(request, request.POST.get("next"), "cart:detail"))
 
@@ -54,10 +56,21 @@ def update(request, product_id):
     product = get_object_or_404(Product, pk=product_id)
     variant = get_object_or_404(ProductVariant, pk=request.POST["variant_id"], product=product) if request.POST.get("variant_id") else None
     try:
-        cart.add(product, int(request.POST.get("quantity", 1)), replace=True, variant=variant)
+        quantity = cart.add(product, int(request.POST.get("quantity", 1)), replace=True, variant=variant)
     except (ValueError, TypeError) as exc:
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"message": str(exc), "cart_count": len(cart)}, status=400)
         messages.error(request, str(exc))
     else:
+        price = variant.effective_price if variant else product.price
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return _response(
+                request,
+                "تم تحديث السلة.",
+                cart,
+                quantity=quantity,
+                line_total=str(price * quantity),
+            )
         messages.success(request, "تم تحديث السلة.")
     return redirect("cart:detail")
 
