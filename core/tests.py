@@ -15,7 +15,7 @@ from orders.models import ShippingZone
 from orders.models import Order
 from products.models import Category, Product
 
-from .models import ContentPage, Offer
+from .models import ContentPage, Offer, SocialGalleryImage, StoreSettings
 
 
 class SeedCatalogDemoTests(TestCase):
@@ -149,6 +149,20 @@ class PublicPageSmokeTests(TestCase):
         response = self.client.get(reverse("core:home"))
         self.assertNotContains(response, future_offer.title)
         self.assertNotContains(response, disabled_offer.title)
+
+    def test_social_gallery_heading_uses_store_name_from_settings(self):
+        settings = StoreSettings.load()
+        settings.store_name = "بيت الجمال"
+        settings.save()
+        SocialGalleryImage.objects.create(
+            image="gallery/test.jpg",
+            alt_text="صورة من المجتمع",
+        )
+
+        response = self.client.get(reverse("core:home"))
+
+        self.assertContains(response, "#لحظات_بيتالجمال")
+        self.assertNotContains(response, "#لحظات_لُمعة")
 
     def test_invalid_price_filters_do_not_crash(self):
         for parameter in ["min_price", "max_price"]:
