@@ -21,7 +21,7 @@
         {% for product in page_obj %}
           <tr>
             <td><div class="table-product">{% if product.main_image %}<img src="{{ product.main_image.url }}" alt="">{% endif %}<div><b>{{ product.name }}</b><small>{{ product.sku }}</small></div></div></td>
-            <td><div class="category-chips">{% for category in product.categories.all %}<span class="category-chip">{{ category.name }}</span>{% empty %}<span class="category-chip">{{ product.category.name }}</span>{% endfor %}</div></td>
+            <td><div class="category-chips">{% for category in product.categories.all %}<span class="category-chip">{{ category.name }}</span>{% empty %}<span class="category-chip">بدون قسم</span>{% endfor %}</div></td>
             <td>{{ product.price }} {{ store_settings.currency }}</td>
             <td><span class="stock-number {% if not product.available_stock %}danger{% elif product.available_stock <= 5 %}warning{% endif %}">{{ product.available_stock }}</span></td>
             <td>{{ product.reserved_quantity }}</td>

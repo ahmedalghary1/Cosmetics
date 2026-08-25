@@ -181,6 +181,8 @@ class DashboardPermissionTests(TestCase):
         self.assertTrue(bundle.is_bundle)
         self.assertEqual(bundle.price, Decimal("400.00"))
         self.assertEqual(bundle.bundle_items.count(), 2)
+        self.assertIsNone(bundle.category_id)
+        self.assertFalse(bundle.categories.exists())
         self.assertEqual(offer.get_url(), bundle.get_absolute_url())
 
         home = self.client.get(reverse("core:home"))

@@ -41,7 +41,13 @@ class Category(TimeStampedModel):
 class ProductQuerySet(models.QuerySet):
     def active(self):
         now = timezone.now()
-        return self.filter(is_active=True, category__is_active=True).filter(
+        return self.filter(is_active=True).filter(
+            Q(category__is_active=True)
+            | Q(
+                source_bundle_offer__sell_as_bundle=True,
+                source_bundle_offer__is_active=True,
+            )
+        ).filter(
             Q(source_bundle_offer__isnull=True)
             | Q(
                 source_bundle_offer__sell_as_bundle=True,
@@ -63,12 +69,14 @@ class Product(TimeStampedModel):
     slug = models.SlugField("الرابط", max_length=210, unique=True, allow_unicode=True, blank=True)
     sku = models.CharField("SKU", max_length=60, unique=True)
     category = models.ForeignKey(
-        Category, verbose_name="القسم الأساسي", related_name="products", on_delete=models.PROTECT
+        Category, verbose_name="القسم الأساسي", related_name="products", on_delete=models.PROTECT,
+        null=True, blank=True,
     )
     categories = models.ManyToManyField(
         Category,
         verbose_name="الأقسام",
         related_name="products_in_section",
+        blank=True,
         help_text="يمكن عرض المنتج داخل أكثر من قسم.",
     )
     short_description = models.CharField("وصف مختصر", max_length=300, blank=True)
@@ -138,6 +146,8 @@ class Product(TimeStampedModel):
         ]
 
     def clean(self):
+        if not self.is_bundle and not self.category_id:
+            raise ValidationError({"category": "اختاري قسمًا واحدًا على الأقل للمنتج."})
         if self.old_price is not None and self.old_price <= self.price:
             raise ValidationError({"old_price": "يجب أن يكون السعر القديم أكبر من السعر الحالي."})
         if self.reserved_quantity > self.stock_quantity:
@@ -164,6 +174,7 @@ class Product(TimeStampedModel):
                 return 0
             if any(
                 not item.product.is_active
+                or not item.product.category_id
                 or not item.product.category.is_active
                 or (item.variant_id and not item.variant.is_active)
                 for item in items

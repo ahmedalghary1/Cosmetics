@@ -25,7 +25,8 @@ class StyledModelForm(forms.ModelForm):
 
 class OfferProductChoiceField(forms.ModelMultipleChoiceField):
     def label_from_instance(self, product):
-        return f"{product.name} — {product.sku} — {product.category.name}"
+        category_name = product.category.name if product.category_id else "بدون قسم"
+        return f"{product.name} — {product.sku} — {category_name}"
 
 
 class ProductForm(StyledModelForm):
@@ -46,6 +47,11 @@ class ProductForm(StyledModelForm):
             "main_image": forms.ClearableFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}),
             "categories": forms.CheckboxSelectMultiple(attrs={"data-choice-picker-options": ""}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["categories"].required = True
+        self.fields["categories"].help_text = "اختاري قسمًا واحدًا أو أكثر لعرض المنتج داخلها."
 
     def clean(self):
         cleaned = super().clean()

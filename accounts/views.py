@@ -82,8 +82,8 @@ def change_password(request):
 @login_required
 def wishlist(request):
     items = request.user.wishlist_items.filter(
-        product__is_active=True, product__category__is_active=True,
-    ).select_related("product", "product__category")
+        product__in=Product.objects.active(),
+    ).select_related("product", "product__category").prefetch_related("product__categories")
     return render(request, "accounts/wishlist.html", {"wishlist_items": items})
 
 

@@ -173,7 +173,7 @@ class Offer(TimeStampedModel):
         )
         defaults = {
             "name": self.title,
-            "category": components[0].category,
+            "category": None,
             "short_description": self.subtitle,
             "description": self.subtitle or self.title,
             "price": self.bundle_price,
@@ -194,12 +194,7 @@ class Offer(TimeStampedModel):
             bundle = Product.objects.create(sku=f"OFFER-{self.pk}", **defaults)
             Offer.objects.filter(pk=self.pk).update(bundle_product=bundle)
             self.bundle_product = bundle
-        category_ids = {
-            category.pk
-            for component in components
-            for category in component.categories.all()
-        }
-        bundle.categories.set(category_ids or [components[0].category_id])
+        bundle.categories.clear()
         BundleItem.objects.filter(bundle=bundle).delete()
         BundleItem.objects.bulk_create([
             BundleItem(bundle=bundle, product=product, quantity=1)
