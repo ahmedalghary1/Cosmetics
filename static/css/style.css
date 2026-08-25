@@ -473,6 +473,31 @@ td small { display: block; color: var(--muted); }
 .toast.error { background: var(--danger); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(10px); } }
 
+/* Progressive scroll motion: enabled only after JavaScript and motion preferences are checked. */
+.motion-ready .scroll-reveal {
+  opacity: 0;
+  transform: translate3d(0, var(--reveal-distance, 20px), 0) scale(var(--reveal-scale, 1));
+  filter: blur(1.5px);
+  transition:
+    opacity .72s cubic-bezier(.22, 1, .36, 1) var(--reveal-delay, 0ms),
+    transform .82s cubic-bezier(.22, 1, .36, 1) var(--reveal-delay, 0ms),
+    filter .65s ease var(--reveal-delay, 0ms);
+  will-change: opacity, transform, filter;
+}
+.motion-ready .scroll-reveal-scale { --reveal-scale: .975; }
+.motion-ready .scroll-reveal.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  filter: blur(0);
+}
+.scroll-parallax {
+  transform: translate3d(0, var(--parallax-y, 0), 0) scale(var(--parallax-scale, 1.045));
+  transform-origin: center;
+  will-change: transform;
+}
+.hero-bg.scroll-parallax, .promo-banner > img.scroll-parallax { height: calc(100% + 44px); top: -22px; bottom: auto; }
+.gallery-main img.scroll-parallax { --parallax-scale: 1.015; }
+
 @media (min-width: 380px) {
   .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .product-info { padding: 12px; }
@@ -550,4 +575,6 @@ td small { display: block; color: var(--muted); }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  .scroll-reveal { opacity: 1 !important; transform: none !important; filter: none !important; }
+  .scroll-parallax { transform: none !important; }
 }

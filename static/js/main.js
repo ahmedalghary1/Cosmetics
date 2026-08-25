@@ -275,4 +275,145 @@
       qs("[data-dashboard-open]")?.focus();
     }
   });
+
+  function initScrollMotion() {
+    const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (motionPreference.matches || !("IntersectionObserver" in window)) return;
+
+    const revealSelectors = [
+      ".hero-content > *",
+      ".page-hero .container > *",
+      ".section-heading > *",
+      ".category-row > *",
+      ".product-grid > *",
+      ".routine-grid > *",
+      ".social-grid > *",
+      ".trust-strip .container > *",
+      ".promo-banner > div > *",
+      ".product-detail-grid > *",
+      ".product-description > *",
+      ".shop-layout > *",
+      ".cart-layout > *",
+      ".checkout-layout > *",
+      ".account-layout > *",
+      ".orders-list > *",
+      ".form-grid > *",
+      ".success-page > *",
+      ".error-page > *",
+      ".site-footer .footer-grid > *",
+      ".site-footer .footer-bottom > *"
+    ];
+    const scaleSelectors = ".category-row > *, .product-grid > *, .routine-grid > *, .social-grid > *, .product-detail-grid > .gallery";
+    const revealElements = [...new Set(revealSelectors.flatMap(selector => qsa(selector)))]
+      .filter(element => !element.closest(".dashboard-body"));
+    const groupIndexes = new Map();
+
+    revealElements.forEach(element => {
+      const parent = element.parentElement;
+      const index = groupIndexes.get(parent) || 0;
+      groupIndexes.set(parent, index + 1);
+      element.classList.add("scroll-reveal");
+      if (element.matches(scaleSelectors)) element.classList.add("scroll-reveal-scale");
+      element.style.setProperty("--reveal-delay", `${Math.min(index, 5) * 55}ms`);
+      element.style.setProperty("--reveal-distance", `${18 + (index % 3) * 3}px`);
+    });
+
+    qsa(".promo-banner, .about-content, .empty-state").forEach(element => {
+      if (element.closest(".dashboard-body") || element.classList.contains("scroll-reveal")) return;
+      element.classList.add("scroll-reveal", "scroll-reveal-scale");
+    });
+
+    const allRevealElements = qsa(".scroll-reveal");
+    const revealObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        const element = entry.target;
+        element.classList.add("is-visible");
+        revealObserver.unobserve(element);
+        let finished = false;
+        const finishReveal = () => {
+          if (finished) return;
+          finished = true;
+          element.classList.remove("scroll-reveal", "scroll-reveal-scale", "is-visible");
+          element.style.removeProperty("--reveal-delay");
+          element.style.removeProperty("--reveal-distance");
+          element.removeEventListener("transitionend", onTransitionEnd);
+        };
+        const onTransitionEnd = event => {
+          if (event.propertyName === "transform") finishReveal();
+        };
+        element.addEventListener("transitionend", onTransitionEnd);
+        window.setTimeout(finishReveal, 1250);
+      });
+    }, {
+      threshold: 0.12,
+      rootMargin: "0px 0px -7% 0px"
+    });
+    allRevealElements.forEach(element => revealObserver.observe(element));
+
+    const parallaxElements = [
+      [qs(".hero-bg"), 18],
+      [qs(".promo-banner > img"), 13],
+      [qs(".gallery-main img"), 8]
+    ].filter(([element]) => element);
+    const activeParallax = new Set();
+    let frameRequested = false;
+
+    parallaxElements.forEach(([element, speed]) => {
+      element.classList.add("scroll-parallax");
+      element.dataset.parallaxSpeed = String(speed);
+    });
+
+    const renderParallax = () => {
+      frameRequested = false;
+      const viewportHeight = window.innerHeight || 1;
+      const mobileFactor = window.innerWidth < 700 ? 0.62 : 1;
+      activeParallax.forEach(element => {
+        const rect = element.getBoundingClientRect();
+        const progress = ((rect.top + rect.height / 2) - viewportHeight / 2) / viewportHeight;
+        const speed = Number(element.dataset.parallaxSpeed || 10) * mobileFactor;
+        const offset = Math.max(-speed, Math.min(speed, progress * -speed));
+        element.style.setProperty("--parallax-y", `${offset.toFixed(2)}px`);
+      });
+    };
+    const requestParallaxFrame = () => {
+      if (frameRequested || !activeParallax.size) return;
+      frameRequested = true;
+      window.requestAnimationFrame(renderParallax);
+    };
+    const parallaxObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) activeParallax.add(entry.target);
+        else activeParallax.delete(entry.target);
+      });
+      requestParallaxFrame();
+    }, { rootMargin: "18% 0px" });
+    parallaxElements.forEach(([element]) => parallaxObserver.observe(element));
+
+    window.addEventListener("scroll", requestParallaxFrame, { passive: true });
+    window.addEventListener("resize", requestParallaxFrame, { passive: true });
+    document.documentElement.classList.add("motion-ready");
+
+    const disableMotion = event => {
+      if (!event.matches) return;
+      revealObserver.disconnect();
+      parallaxObserver.disconnect();
+      window.removeEventListener("scroll", requestParallaxFrame);
+      window.removeEventListener("resize", requestParallaxFrame);
+      document.documentElement.classList.remove("motion-ready");
+      allRevealElements.forEach(element => {
+        element.classList.remove("scroll-reveal", "scroll-reveal-scale", "is-visible");
+        element.style.removeProperty("--reveal-delay");
+        element.style.removeProperty("--reveal-distance");
+      });
+      parallaxElements.forEach(([element]) => {
+        element.classList.remove("scroll-parallax");
+        element.style.removeProperty("--parallax-y");
+      });
+      motionPreference.removeEventListener?.("change", disableMotion);
+    };
+    motionPreference.addEventListener?.("change", disableMotion);
+  }
+
+  initScrollMotion();
 })();
