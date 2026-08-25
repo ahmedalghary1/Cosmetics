@@ -115,7 +115,7 @@ p, small, .eyebrow, .section-copy, .product-category, .product-info > p, .routin
 .brand { display: inline-flex; width: fit-content; flex-direction: column; align-items: center; color: var(--primary); line-height: .9; }
 .brand span { font-family: var(--font); font-size: 1.82rem; font-weight: 600; }
 .brand small { margin-top: 6px; font-size: .52rem; letter-spacing: .18em; }
-.brand img { max-height: 52px; width: auto; }
+.brand img { display: block; max-width: 100%; max-height: 52px; width: auto; object-fit: contain; }
 .nav-shell > .brand { justify-self: center; }
 .desktop-nav { display: none; }
 .nav-actions { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
@@ -609,10 +609,11 @@ td small { display: block; color: var(--muted); }
   .shop-results .product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (max-width: 1149px) {
-  .nav-shell { position: relative; grid-template-columns: 1fr auto 1fr; }
-  .nav-shell > .brand { position: absolute; right: 50%; max-width: min(126px, 34vw); transform: translateX(50%); }
-  .nav-shell > .mobile-only { justify-self: start; }
-  .nav-actions { justify-self: end; }
+  .nav-shell { grid-template-columns: minmax(94px, 1fr) minmax(0, 126px) minmax(94px, 1fr); }
+  .nav-shell > .mobile-only { grid-column: 1; justify-self: start; }
+  .nav-shell > .brand { grid-column: 2; width: 100%; max-width: 126px; justify-self: center; }
+  .nav-shell > .brand span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nav-actions { min-width: 0; grid-column: 3; justify-self: end; }
   .dashboard-top { padding-inline: max(18px, env(safe-area-inset-left)) max(18px, env(safe-area-inset-right)); }
 }
 @media (max-width: 849px) {
@@ -631,7 +632,7 @@ td small { display: block; color: var(--muted); }
   .btn { min-height: 48px; padding: 10px 20px; }
   .icon-btn { width: 44px; height: 44px; }
   .announcement { min-height: 31px; padding: 5px max(12px, env(safe-area-inset-left)); font-size: .72rem; line-height: 1.45; }
-  .nav-shell { min-height: 64px; gap: 4px; }
+  .nav-shell { min-height: 64px; grid-template-columns: minmax(84px, 1fr) minmax(0, 104px) minmax(84px, 1fr); gap: 4px; }
   .nav-shell > .brand { max-width: 104px; }
   .brand span { max-width: 104px; overflow: hidden; font-size: 1.45rem; text-overflow: ellipsis; white-space: nowrap; }
   .brand small { margin-top: 5px; font-size: .43rem; }
@@ -773,6 +774,7 @@ td small { display: block; color: var(--muted); }
   .info-list div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
 }
 @media (max-width: 379px) {
+  .nav-shell { grid-template-columns: minmax(78px, 1fr) minmax(0, 92px) minmax(78px, 1fr); gap: 2px; }
   .nav-actions .icon-btn { width: 39px; }
   .nav-shell > .brand { max-width: 92px; }
   .brand span { max-width: 92px; font-size: 1.28rem; }
