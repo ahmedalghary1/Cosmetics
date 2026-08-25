@@ -2,7 +2,7 @@
 <article class="product-card">
   <a class="product-image" href="{{ product.get_absolute_url }}">
     {% if product.main_image %}<img src="{{ product.main_image.url }}" alt="{{ product.name }}" width="600" height="800" loading="lazy">{% else %}<img src="{% static 'images/demo/serum.webp' %}" alt="{{ product.name }}" width="600" height="800" loading="lazy">{% endif %}
-    <span class="badge-stack">{% if product.is_new %}<b>جديد</b>{% endif %}{% if product.discount_percentage %}<b class="sale">خصم {{ product.discount_percentage }}٪</b>{% endif %}</span>
+    <span class="badge-stack">{% if product.is_bundle %}<b>باقة</b>{% endif %}{% if product.is_new %}<b>جديد</b>{% endif %}{% if product.discount_percentage %}<b class="sale">خصم {{ product.discount_percentage }}٪</b>{% endif %}</span>
   </a>
   <div class="product-info"><a class="product-category" href="{{ product.category.get_absolute_url }}">{{ product.category.name }}</a><h3><a href="{{ product.get_absolute_url }}">{{ product.name }}</a></h3>{% if product.short_description %}<p>{{ product.short_description|truncatechars:68 }}</p>{% endif %}
     <div class="price"><strong>{{ product.price|floatformat:"-2" }} {{ store_settings.currency }}</strong>{% if product.old_price %}<del>{{ product.old_price|floatformat:"-2" }}</del>{% endif %}</div>

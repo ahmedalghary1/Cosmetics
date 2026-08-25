@@ -19,6 +19,7 @@ from .models import (
     Order,
     OrderAuditLog,
     OrderItem,
+    OrderItemBundleComponent,
     ReservationBatchAllocation,
     ReturnRequest,
 )
@@ -170,7 +171,9 @@ def _create_order(*, form, cart, user, idempotency_key):
     current_items = []
     subtotal = Decimal("0.00")
     for item in cart_items:
-        product = Product.objects.active().filter(pk=item["product"].pk).first()
+        product = Product.objects.active().prefetch_related(
+            "bundle_items__product", "bundle_items__variant",
+        ).filter(pk=item["product"].pk).first()
         if not product:
             raise CheckoutError("أحد المنتجات لم يعد متاحًا. حدّث السلة وحاول مرة أخرى.")
         variant = None
@@ -184,6 +187,8 @@ def _create_order(*, form, cart, user, idempotency_key):
             raise CheckoutError(f"يرجى اختيار نوع المنتج «{product.name}».")
         price = variant.effective_price if variant else product.price
         subtotal += price * item["quantity"]
+        if product.is_bundle and not product.bundle_items.exists():
+            raise CheckoutError(f"الباقة «{product.name}» لا تحتوي على منتجات.")
         current_items.append({**item, "product": product, "variant": variant, "price": price})
 
     coupon = cart.coupon
@@ -226,16 +231,53 @@ def _create_order(*, form, cart, user, idempotency_key):
     order.terms_accepted_at = timezone.now()
     order.save()
 
-    order_items = []
+    inventory_requirements = {}
     for item in current_items:
+        if item["product"].is_bundle:
+            components = [
+                {
+                    "product": component.product,
+                    "variant": component.variant,
+                    "quantity_per_bundle": component.quantity,
+                }
+                for component in item["product"].bundle_items.all()
+            ]
+        else:
+            components = [{
+                "product": item["product"],
+                "variant": item["variant"],
+                "quantity_per_bundle": 1,
+            }]
+        item["inventory_components"] = components
+        for component in components:
+            key = (component["product"].pk, component["variant"].pk if component["variant"] else None)
+            requirement = inventory_requirements.setdefault(key, {
+                "product": component["product"],
+                "variant": component["variant"],
+                "quantity": 0,
+            })
+            requirement["quantity"] += component["quantity_per_bundle"] * item["quantity"]
+
+    component_unit_costs = {}
+    for key, requirement in inventory_requirements.items():
         _, unit_cost = _reserve_inventory(
             order=order,
-            product=item["product"],
-            variant=item["variant"],
-            quantity=item["quantity"],
+            product=requirement["product"],
+            variant=requirement["variant"],
+            quantity=requirement["quantity"],
             reserved_until=reserved_until,
         )
-        order_items.append(OrderItem(
+        component_unit_costs[key] = unit_cost
+
+    for item in current_items:
+        unit_cost = sum(
+            component_unit_costs[(
+                component["product"].pk,
+                component["variant"].pk if component["variant"] else None,
+            )] * component["quantity_per_bundle"]
+            for component in item["inventory_components"]
+        )
+        order_item = OrderItem.objects.create(
             order=order,
             product=item["product"],
             variant=item["variant"],
@@ -247,8 +289,20 @@ def _create_order(*, form, cart, user, idempotency_key):
             total_price=item["price"] * item["quantity"],
             unit_cost=unit_cost,
             total_cost=unit_cost * item["quantity"],
-        ))
-    OrderItem.objects.bulk_create(order_items)
+        )
+        if item["product"].is_bundle:
+            OrderItemBundleComponent.objects.bulk_create([
+                OrderItemBundleComponent(
+                    order_item=order_item,
+                    product=component["product"],
+                    variant=component["variant"],
+                    product_name=component["product"].name,
+                    variant_name=component["variant"].option_summary if component["variant"] else "",
+                    sku=component["variant"].sku if component["variant"] else component["product"].sku,
+                    quantity_per_bundle=component["quantity_per_bundle"],
+                )
+                for component in item["inventory_components"]
+            ])
 
     if coupon:
         CouponRedemption.objects.create(
@@ -558,7 +612,7 @@ RETURN_TRANSITIONS = {
 def process_return(return_request, *, new_status, refund_amount, admin_note, restockable, actor=None):
     with transaction.atomic():
         return_request = ReturnRequest.objects.select_related("order").prefetch_related(
-            "items__order_item",
+            "items__order_item__bundle_components",
         ).get(pk=return_request.pk)
         old_status = return_request.status
         if new_status != old_status and new_status not in RETURN_TRANSITIONS.get(old_status, set()):
@@ -571,12 +625,25 @@ def process_return(return_request, *, new_status, refund_amount, admin_note, res
             for item in return_request.items.all():
                 if not item.restockable or item.restocked:
                     continue
-                target_model = ProductVariant if item.order_item.variant_id else Product
-                target_id = item.order_item.variant_id or item.order_item.product_id
-                if target_id:
-                    target_model.objects.filter(pk=target_id).update(
-                        stock_quantity=F("stock_quantity") + item.quantity,
-                    )
+                components = list(item.order_item.bundle_components.all())
+                if components:
+                    for component in components:
+                        target_model = ProductVariant if component.variant_id else Product
+                        target_id = component.variant_id or component.product_id
+                        if target_id:
+                            target_model.objects.filter(pk=target_id).update(
+                                stock_quantity=F("stock_quantity") + (
+                                    component.quantity_per_bundle * item.quantity
+                                ),
+                            )
+                else:
+                    target_model = ProductVariant if item.order_item.variant_id else Product
+                    target_id = item.order_item.variant_id or item.order_item.product_id
+                    if target_id:
+                        target_model.objects.filter(pk=target_id).update(
+                            stock_quantity=F("stock_quantity") + item.quantity,
+                        )
+                if components or item.order_item.product_id:
                     item.restocked = True
                     item.save(update_fields=["restocked"])
 

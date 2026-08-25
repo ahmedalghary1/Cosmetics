@@ -63,6 +63,11 @@ class Product(TimeStampedModel):
     )
     stock_quantity = models.PositiveIntegerField("المخزون", default=0)
     reserved_quantity = models.PositiveIntegerField("الكمية المحجوزة", default=0, editable=False)
+    is_bundle = models.BooleanField(
+        "باقة / بوكس",
+        default=False,
+        help_text="الباقة تُباع كمنتج واحد ويُخصم مخزون مكوّناتها تلقائيًا.",
+    )
     has_variants = models.BooleanField("له خيارات", default=False)
     brand = models.CharField("العلامة التجارية", max_length=120, blank=True)
     country_of_origin = models.CharField("بلد المنشأ", max_length=120, blank=True)
@@ -115,6 +120,8 @@ class Product(TimeStampedModel):
             raise ValidationError({"old_price": "يجب أن يكون السعر القديم أكبر من السعر الحالي."})
         if self.reserved_quantity > self.stock_quantity:
             raise ValidationError({"stock_quantity": "المخزون لا يمكن أن يقل عن الكمية المحجوزة."})
+        if self.is_bundle and self.has_variants:
+            raise ValidationError({"has_variants": "لا يمكن إضافة خيارات مباشرة للباقة؛ حددي خيارات مكوّناتها بدلًا من ذلك."})
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -127,6 +134,22 @@ class Product(TimeStampedModel):
 
     @property
     def available_stock(self):
+        if self.is_bundle and self.pk:
+            items = list(self.bundle_items.select_related("product", "product__category", "variant"))
+            if not items:
+                return 0
+            if any(
+                not item.product.is_active
+                or not item.product.category.is_active
+                or (item.variant_id and not item.variant.is_active)
+                for item in items
+            ):
+                return 0
+            return min(
+                (item.variant.available_stock if item.variant_id else item.product.available_stock)
+                // item.quantity
+                for item in items
+            )
         if self.has_variants and self.pk:
             return sum(variant.available_stock for variant in self.variants.filter(is_active=True))
         return max(self.stock_quantity - self.reserved_quantity, 0)
@@ -239,6 +262,59 @@ class ProductVariant(TimeStampedModel):
 
     def __str__(self):
         return f"{self.product.name} - {self.option_summary}"
+
+
+class BundleItem(models.Model):
+    bundle = models.ForeignKey(
+        Product, verbose_name="الباقة", related_name="bundle_items", on_delete=models.CASCADE,
+    )
+    product = models.ForeignKey(
+        Product, verbose_name="المنتج داخل الباقة", related_name="included_in_bundles", on_delete=models.PROTECT,
+    )
+    variant = models.ForeignKey(
+        ProductVariant, verbose_name="الخيار", related_name="included_in_bundles",
+        on_delete=models.PROTECT, null=True, blank=True,
+    )
+    quantity = models.PositiveSmallIntegerField("الكمية داخل الباقة", default=1)
+
+    class Meta:
+        ordering = ["id"]
+        verbose_name = "مكوّن باقة"
+        verbose_name_plural = "مكوّنات الباقات"
+        constraints = [
+            models.CheckConstraint(condition=Q(quantity__gt=0), name="bundle_item_quantity_positive"),
+            models.UniqueConstraint(
+                fields=["bundle", "product", "variant"],
+                condition=Q(variant__isnull=False),
+                name="unique_bundle_variant_item",
+            ),
+            models.UniqueConstraint(
+                fields=["bundle", "product"],
+                condition=Q(variant__isnull=True),
+                name="unique_bundle_product_item",
+            ),
+        ]
+
+    def clean(self):
+        errors = {}
+        if self.bundle_id and not self.bundle.is_bundle:
+            errors["bundle"] = "يجب تفعيل خيار «باقة / بوكس» للمنتج الرئيسي."
+        if self.bundle_id and self.product_id == self.bundle_id:
+            errors["product"] = "لا يمكن أن تحتوي الباقة على نفسها."
+        if self.product_id and self.product.is_bundle:
+            errors["product"] = "لا يمكن وضع باقة داخل باقة أخرى."
+        if self.variant_id and self.variant.product_id != self.product_id:
+            errors["variant"] = "الخيار لا يتبع المنتج المحدد."
+        if self.product_id and self.product.has_variants and not self.variant_id:
+            errors["variant"] = "اختيار النوع مطلوب لهذا المنتج."
+        if self.product_id and not self.product.has_variants and self.variant_id:
+            errors["variant"] = "هذا المنتج لا يحتوي على خيارات."
+        if errors:
+            raise ValidationError(errors)
+
+    def __str__(self):
+        variant = f" — {self.variant.option_summary}" if self.variant_id else ""
+        return f"{self.product.name}{variant} × {self.quantity}"
 
 
 class InventoryBatch(TimeStampedModel):

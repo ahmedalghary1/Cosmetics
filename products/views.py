@@ -41,9 +41,17 @@ def product_list(request, category_slug=None):
     if filters.get("max_price") is not None:
         products = products.filter(price__lte=filters["max_price"])
     if filters.get("in_stock"):
+        bundle_ids = [
+            product.pk
+            for product in products.filter(is_bundle=True).prefetch_related(
+                "bundle_items__product", "bundle_items__variant",
+            )
+            if product.in_stock
+        ]
         products = products.filter(
-            Q(has_variants=False, stock_quantity__gt=F("reserved_quantity"))
-            | Q(has_variants=True, variants__is_active=True, variants__stock_quantity__gt=F("variants__reserved_quantity"))
+            Q(pk__in=bundle_ids)
+            | Q(is_bundle=False, has_variants=False, stock_quantity__gt=F("reserved_quantity"))
+            | Q(is_bundle=False, has_variants=True, variants__is_active=True, variants__stock_quantity__gt=F("variants__reserved_quantity"))
         ).distinct()
     if filters.get("offers"):
         products = products.filter(old_price__isnull=False)
@@ -79,7 +87,9 @@ def product_list(request, category_slug=None):
 
 def product_detail(request, slug):
     product = get_object_or_404(
-        Product.objects.active().select_related("category").prefetch_related("images", "variants"), slug=slug
+        Product.objects.active().select_related("category").prefetch_related(
+            "images", "variants", "bundle_items__product", "bundle_items__variant",
+        ), slug=slug
     )
     related = (
         Product.objects.active()

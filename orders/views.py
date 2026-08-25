@@ -87,7 +87,9 @@ def shipping_quote(request):
 
 
 def success(request, order_number):
-    order = get_object_or_404(Order.objects.prefetch_related("items"), order_number=order_number)
+    order = get_object_or_404(
+        Order.objects.prefetch_related("items__bundle_components"), order_number=order_number,
+    )
     owns_order = request.user.is_authenticated and order.user_id == request.user.id
     token_matches = str(order.access_token) == request.GET.get("token", "")
     if not owns_order and not token_matches:
@@ -99,7 +101,9 @@ def order_detail(request, order_number):
     if not request.user.is_authenticated:
         return redirect("accounts:login")
     order = get_object_or_404(
-        Order.objects.prefetch_related("items"), order_number=order_number, user=request.user
+        Order.objects.prefetch_related("items__bundle_components"),
+        order_number=order_number,
+        user=request.user,
     )
     return render(request, "orders/detail.html", {"order": order})
 

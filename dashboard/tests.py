@@ -9,7 +9,7 @@ from django.urls import reverse
 
 from core.models import ContentPage, Offer
 from orders.models import Order, ShippingZone
-from products.models import Category, InventoryBatch, Product
+from products.models import BundleItem, Category, InventoryBatch, Product
 
 
 @override_settings(SECURE_SSL_REDIRECT=False)
@@ -125,6 +125,44 @@ class DashboardPermissionTests(TestCase):
         })
         self.assertRedirects(response, reverse("dashboard:offers"))
         self.assertTrue(Offer.objects.filter(title="عرض الأسبوع").exists())
+
+    def test_catalog_manager_can_create_bundle_with_components(self):
+        user = self.user_for_role("Catalog Manager")
+        category = Category.objects.create(name="الباقات")
+        component = Product.objects.create(
+            name="كريم مكوّن", sku="COMPONENT-1", category=category,
+            description="وصف", price=Decimal("100"), stock_quantity=5,
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(reverse("dashboard:product_add"), {
+            "name": "بوكس العناية", "slug": "", "sku": "BUNDLE-1",
+            "category": category.pk, "short_description": "باقة كاملة",
+            "description": "وصف الباقة", "price": "250.00", "old_price": "300.00",
+            "stock_quantity": 0, "is_bundle": "on", "is_active": "on",
+            "bundle-TOTAL_FORMS": 3, "bundle-INITIAL_FORMS": 0,
+            "bundle-MIN_NUM_FORMS": 0, "bundle-MAX_NUM_FORMS": 1000,
+            "bundle-0-product": component.pk, "bundle-0-variant": "",
+            "bundle-0-quantity": 2,
+            "bundle-1-product": "", "bundle-1-variant": "", "bundle-1-quantity": 1,
+            "bundle-2-product": "", "bundle-2-variant": "", "bundle-2-quantity": 1,
+        })
+
+        self.assertRedirects(
+            response,
+            reverse("dashboard:products"),
+            msg_prefix=(
+                f"product_errors={response.context['form'].errors if response.status_code == 200 else {}} "
+                f"bundle_errors={response.context['formset'].errors if response.status_code == 200 else {}} "
+                f"bundle_non_form={response.context['formset'].non_form_errors() if response.status_code == 200 else {}}"
+            ),
+        )
+        bundle = Product.objects.get(sku="BUNDLE-1")
+        self.assertTrue(bundle.is_bundle)
+        self.assertEqual(
+            BundleItem.objects.get(bundle=bundle, product=component).quantity,
+            2,
+        )
 
     def test_unreferenced_product_can_be_deleted(self):
         user = get_user_model().objects.create_superuser(

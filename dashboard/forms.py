@@ -1,9 +1,10 @@
 from django import forms
+from django.forms import inlineformset_factory
 from django.contrib.auth import get_user_model
 
 from core.models import Banner, ContentPage, Offer, RoutineStep, SocialGalleryImage, StoreSettings
 from orders.models import Coupon, Order, ReturnRequest, ShippingZone
-from products.models import Category, InventoryBatch, Product, ProductVariant, VariantOption
+from products.models import BundleItem, Category, InventoryBatch, Product, ProductVariant, VariantOption
 from core.image_utils import optimize_uploaded_image
 
 
@@ -27,7 +28,7 @@ class ProductForm(StyledModelForm):
         model = Product
         fields = [
             "name", "slug", "sku", "category", "short_description", "description",
-            "price", "old_price", "stock_quantity", "has_variants", "main_image", "ingredients", "usage",
+            "price", "old_price", "stock_quantity", "is_bundle", "has_variants", "main_image", "ingredients", "usage",
             "brand", "country_of_origin", "key_ingredients", "benefits", "warnings",
             "suitable_for", "skin_types", "hair_types", "size_label", "pao_months",
             "cruelty_free", "vegan",
@@ -39,6 +40,63 @@ class ProductForm(StyledModelForm):
             "usage": forms.Textarea(attrs={"rows": 4}),
             "main_image": forms.ClearableFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}),
         }
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("is_bundle"):
+            cleaned["stock_quantity"] = 0
+            cleaned["has_variants"] = False
+            self.instance.stock_quantity = 0
+            self.instance.has_variants = False
+        return cleaned
+
+
+class BundleItemForm(StyledModelForm):
+    class Meta:
+        model = BundleItem
+        fields = ["product", "variant", "quantity"]
+
+    def __init__(self, *args, bundle=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        products = Product.objects.filter(is_bundle=False).select_related("category").order_by("name")
+        if bundle and bundle.pk:
+            products = products.exclude(pk=bundle.pk)
+        self.fields["product"].queryset = products
+        self.fields["variant"].queryset = ProductVariant.objects.filter(
+            is_active=True, product__is_bundle=False,
+        ).select_related("product").order_by("product__name", "option_summary")
+        self.fields["variant"].help_text = "يُحدد فقط إذا كان المنتج له نوع/حجم؛ وإلا يُترك فارغًا."
+
+
+class BaseBundleItemFormSet(forms.BaseInlineFormSet):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for form in self.forms:
+            form.fields["product"].queryset = Product.objects.filter(
+                is_bundle=False,
+            ).exclude(pk=self.instance.pk).select_related("category").order_by("name")
+
+    def clean(self):
+        super().clean()
+        if any(self.errors) or not getattr(self.instance, "is_bundle", False):
+            return
+        active_forms = [
+            form for form in self.forms
+            if form.cleaned_data and not form.cleaned_data.get("DELETE") and form.cleaned_data.get("product")
+        ]
+        if not active_forms:
+            raise forms.ValidationError("أضيفي منتجًا واحدًا على الأقل داخل الباقة.")
+
+
+BundleItemFormSet = inlineformset_factory(
+    Product,
+    BundleItem,
+    fk_name="bundle",
+    form=BundleItemForm,
+    formset=BaseBundleItemFormSet,
+    extra=3,
+    can_delete=True,
+)
 
 
 class CategoryForm(StyledModelForm):

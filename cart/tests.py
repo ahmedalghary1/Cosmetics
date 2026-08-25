@@ -5,7 +5,7 @@ from django.contrib.sessions.backends.db import SessionStore
 from django.test import TestCase
 from django.urls import reverse
 
-from products.models import Category, Product, ProductVariant
+from products.models import BundleItem, Category, Product, ProductVariant
 
 from .cart import Cart
 
@@ -64,3 +64,19 @@ class CartTests(TestCase):
         self.product.category.save(update_fields=["is_active", "updated_at"])
         self.assertEqual(list(self.cart), [])
         self.assertEqual(len(self.cart), 0)
+
+    def test_bundle_is_added_once_and_respects_component_stock(self):
+        bundle = Product.objects.create(
+            name="بوكس الجسم", sku="BODY-BOX", category=self.product.category,
+            description="وصف", price=Decimal("200"), is_bundle=True,
+        )
+        BundleItem.objects.create(bundle=bundle, product=self.product, quantity=2)
+
+        self.cart.add(bundle, 2)
+        item = list(self.cart)[0]
+
+        self.assertEqual(item["product"], bundle)
+        self.assertEqual(item["quantity"], 2)
+        self.assertEqual(item["total_price"], Decimal("400"))
+        with self.assertRaises(ValueError):
+            self.cart.add(bundle, 1)

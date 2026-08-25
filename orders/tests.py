@@ -17,7 +17,7 @@ from PIL import Image
 from cart.cart import Cart
 from core.models import StoreSettings
 from core.validators import validate_image_upload
-from products.models import Category, InventoryBatch, Product
+from products.models import BundleItem, Category, InventoryBatch, Product
 
 from .forms import CheckoutForm
 from .models import (
@@ -170,6 +170,64 @@ class CheckoutTests(TestCase):
             create_order(form=second_form, cart=second_cart)
         self.product.refresh_from_db()
         self.assertEqual(self.product.reserved_quantity, 2)
+
+    def test_bundle_orders_as_one_item_and_reserves_all_components(self):
+        cream = Product.objects.create(
+            name="كريم", sku="BOX-CREAM", category=self.category,
+            description="وصف", price=Decimal("100"), stock_quantity=3,
+        )
+        bundle = Product.objects.create(
+            name="بوكس العناية", sku="CARE-BOX", category=self.category,
+            description="وصف", price=Decimal("350"), old_price=Decimal("450"),
+            is_bundle=True,
+        )
+        BundleItem.objects.create(bundle=bundle, product=self.product, quantity=2)
+        BundleItem.objects.create(bundle=bundle, product=cream, quantity=1)
+        cart = session_cart(bundle)
+        form = self.form()
+        self.assertTrue(form.is_valid(), form.errors)
+
+        order = create_order(form=form, cart=cart)
+
+        self.assertEqual(order.items.count(), 1)
+        order_item = order.items.get()
+        self.assertEqual(order_item.product, bundle)
+        self.assertEqual(order_item.total_price, Decimal("350"))
+        self.assertEqual(order_item.bundle_components.count(), 2)
+        reservations = {
+            reservation.product_id: reservation.quantity
+            for reservation in order.reservations.all()
+        }
+        self.assertEqual(reservations, {self.product.pk: 2, cream.pk: 1})
+
+        update_order_status(order, Order.Status.CONFIRMED)
+        self.product.refresh_from_db()
+        cream.refresh_from_db()
+        self.assertEqual(self.product.stock_quantity, 2)
+        self.assertEqual(cream.stock_quantity, 2)
+
+        update_order_status(order, Order.Status.CANCELLED)
+        self.product.refresh_from_db()
+        cream.refresh_from_db()
+        self.assertEqual(self.product.stock_quantity, 4)
+        self.assertEqual(cream.stock_quantity, 3)
+
+    def test_bundle_and_standalone_component_share_one_reservation(self):
+        bundle = Product.objects.create(
+            name="بوكس سيروم", sku="SERUM-BOX", category=self.category,
+            description="وصف", price=Decimal("250"), is_bundle=True,
+        )
+        BundleItem.objects.create(bundle=bundle, product=self.product, quantity=2)
+        cart = session_cart(bundle)
+        cart.add(self.product, 1)
+        form = self.form()
+        self.assertTrue(form.is_valid(), form.errors)
+
+        order = create_order(form=form, cart=cart)
+
+        reservation = order.reservations.get(product=self.product)
+        self.assertEqual(reservation.quantity, 3)
+        self.assertEqual(order.items.count(), 2)
 
     def test_instapay_is_hidden_when_store_configuration_is_incomplete(self):
         settings = StoreSettings.load()

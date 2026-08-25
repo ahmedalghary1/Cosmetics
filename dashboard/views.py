@@ -26,7 +26,7 @@ from products.models import Category, InventoryBatch, Product, ProductImage, Pro
 
 from .forms import (
     BannerForm, CategoryForm, ContentPageForm, CouponForm, OfferForm, OrderUpdateForm,
-    InventoryBatchForm, ProductForm, ProductVariantForm, RoutineStepForm, ShippingZoneForm,
+    BundleItemFormSet, InventoryBatchForm, ProductForm, ProductVariantForm, RoutineStepForm, ShippingZoneForm,
     ReturnUpdateForm, SocialGalleryForm, StoreSettingsForm, UserRoleForm, VariantOptionForm,
 )
 from .decorators import dashboard_permission, staff_required
@@ -177,7 +177,24 @@ def product_form(request, pk=None):
         raise PermissionDenied
     product = get_object_or_404(Product, pk=pk) if pk else None
     form = ProductForm(request.POST or None, request.FILES or None, instance=product)
+    bundle_formset = BundleItemFormSet(
+        request.POST or None,
+        instance=product or form.instance,
+        prefix="bundle",
+    )
     if request.method == "POST" and form.is_valid():
+        bundle_formset.instance = form.instance
+        bundle_valid = bundle_formset.is_valid()
+        if not form.cleaned_data.get("is_bundle"):
+            bundle_valid = True
+        if not bundle_valid:
+            return render(request, "dashboard/form.html", {
+                "form": form,
+                "formset": bundle_formset,
+                "title": "تعديل المنتج" if product else "إضافة منتج",
+                "product": product,
+                "additional_images": True,
+            })
         try:
             optimized_images = []
             for image in request.FILES.getlist("additional_images"):
@@ -185,6 +202,11 @@ def product_form(request, pk=None):
                 optimized_images.append(optimize_uploaded_image(image))
             with transaction.atomic():
                 product = form.save()
+                if product.is_bundle:
+                    bundle_formset.instance = product
+                    bundle_formset.save()
+                else:
+                    product.bundle_items.all().delete()
                 product.images.filter(pk__in=request.POST.getlist("delete_images")).delete()
                 start_order = product.images.count()
                 for index, image in enumerate(optimized_images, start_order):
@@ -198,7 +220,7 @@ def product_form(request, pk=None):
             return redirect("dashboard:products")
     return render(request, "dashboard/form.html", {
         "form": form, "title": "تعديل المنتج" if product else "إضافة منتج",
-        "product": product, "additional_images": True,
+        "product": product, "additional_images": True, "formset": bundle_formset,
     })
 
 
@@ -385,7 +407,10 @@ def order_list(request):
 
 @dashboard_permission("orders.view_order")
 def order_detail(request, pk):
-    order = get_object_or_404(Order.objects.select_related("governorate", "user").prefetch_related("items"), pk=pk)
+    order = get_object_or_404(
+        Order.objects.select_related("governorate", "user").prefetch_related("items__bundle_components"),
+        pk=pk,
+    )
     original_status = order.status
     form = OrderUpdateForm(request.POST or None, instance=order, user=request.user)
     if request.method == "POST" and form.is_valid():

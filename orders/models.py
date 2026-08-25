@@ -251,6 +251,37 @@ class OrderItem(models.Model):
         return f"{self.product_name} × {self.quantity}"
 
 
+class OrderItemBundleComponent(models.Model):
+    order_item = models.ForeignKey(
+        OrderItem, related_name="bundle_components", on_delete=models.CASCADE,
+    )
+    product = models.ForeignKey(
+        "products.Product", related_name="order_bundle_component_snapshots",
+        on_delete=models.SET_NULL, null=True,
+    )
+    variant = models.ForeignKey(
+        "products.ProductVariant", related_name="order_bundle_component_snapshots",
+        on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    product_name = models.CharField("اسم مكوّن الباقة", max_length=180)
+    variant_name = models.CharField("وصف الخيار", max_length=220, blank=True)
+    sku = models.CharField("SKU", max_length=60)
+    quantity_per_bundle = models.PositiveSmallIntegerField("الكمية في الباقة")
+
+    class Meta:
+        verbose_name = "مكوّن باقة في الطلب"
+        verbose_name_plural = "مكوّنات الباقات في الطلب"
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(quantity_per_bundle__gt=0),
+                name="order_bundle_component_quantity_positive",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.product_name} × {self.quantity_per_bundle}"
+
+
 class InventoryReservation(TimeStampedModel):
     class Status(models.TextChoices):
         ACTIVE = "active", "نشط"

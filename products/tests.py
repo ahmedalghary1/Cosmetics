@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.test import TestCase
 from django.core.exceptions import ValidationError
 
-from .models import Category, InventoryBatch, Product, ProductVariant
+from .models import BundleItem, Category, InventoryBatch, Product, ProductVariant
 
 
 class ProductModelTests(TestCase):
@@ -30,6 +30,25 @@ class ProductModelTests(TestCase):
             description="وصف", price=Decimal("50.00"), stock_quantity=0,
         )
         self.assertFalse(product.in_stock)
+
+    def test_bundle_stock_is_limited_by_its_components(self):
+        first = Product.objects.create(
+            name="غسول", sku="BND-C1", category=self.category,
+            description="وصف", price=Decimal("50"), stock_quantity=5,
+        )
+        second = Product.objects.create(
+            name="كريم", sku="BND-C2", category=self.category,
+            description="وصف", price=Decimal("60"), stock_quantity=7,
+        )
+        bundle = Product.objects.create(
+            name="بوكس العناية", sku="BND-1", category=self.category,
+            description="وصف", price=Decimal("90"), is_bundle=True,
+        )
+        BundleItem.objects.create(bundle=bundle, product=first, quantity=2)
+        BundleItem.objects.create(bundle=bundle, product=second, quantity=1)
+
+        self.assertEqual(bundle.available_stock, 2)
+        self.assertTrue(bundle.in_stock)
 
     def test_negative_price_is_rejected(self):
         product = Product(
