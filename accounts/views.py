@@ -41,7 +41,7 @@ def register(request):
     if request.method == "POST" and form.is_valid():
         user = form.save()
         login(request, user)
-        messages.success(request, "تم إنشاء حسابك بنجاح.")
+        messages.success(request, "تم إنشاء الحساب بنجاح.")
         return redirect("accounts:profile")
     return render(request, "accounts/register.html", {"form": form})
 
@@ -63,7 +63,7 @@ def edit_profile(request):
     form = ProfileForm(request.POST or None, user=request.user, initial=initial)
     if request.method == "POST" and form.is_valid():
         form.save()
-        messages.success(request, "تم تحديث بياناتك.")
+        messages.success(request, "تم تحديث البيانات.")
         return redirect("accounts:profile")
     return render(request, "accounts/edit_profile.html", {"form": form})
 

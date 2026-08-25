@@ -11,7 +11,7 @@
       <a href="{% url 'core:home' %}#categories">التصنيفات</a>
       <a href="{% url 'products:list' %}?best=1">الأكثر مبيعًا</a>
       <a href="{% url 'products:list' %}?offers=1">العروض</a>
-      <a href="{% url 'core:page' 'من-نحن' %}">من نحن</a>
+      <a href="{% url 'core:about' %}">من نحن</a>
       <a href="{% url 'core:contact' %}">تواصل معنا</a>
     </nav>
     <div class="nav-actions">
@@ -29,12 +29,13 @@
     <a href="{% url 'core:home' %}">{% icon "house" %}<span>الرئيسية</span></a><a href="{% url 'products:list' %}">{% icon "store" %}<span>كل المنتجات</span></a>
     <a href="{% url 'products:list' %}?best=1">{% icon "sparkles" %}<span>الأكثر مبيعًا</span></a><a href="{% url 'products:list' %}?offers=1">{% icon "badge-percent" %}<span>العروض</span></a>
     <a href="{% url 'accounts:wishlist' %}">{% icon "heart" %}<span>المفضلة</span></a><a href="{% url 'accounts:profile' %}">{% icon "user-round" %}<span>حسابي</span></a>
+    <a href="{% url 'core:about' %}">{% icon "file-text" %}<span>من نحن</span></a>
     <a href="{% url 'core:contact' %}">{% icon "message-circle" %}<span>تواصل معنا</span></a>
   </nav>
 </aside>
 <dialog class="search-dialog" data-search-dialog>
   <form class="search-box" action="{% url 'core:search' %}" method="get">
-    <label for="global-search">ما الذي تبحثين عنه؟</label>
+    <label for="global-search">البحث في المتجر</label>
     <div><input id="global-search" name="q" type="search" placeholder="اسم المنتج أو التصنيف" required><button class="btn btn-primary">{% icon "search" %}<span>بحث</span></button></div>
     <button type="button" class="search-close" data-search-close aria-label="إغلاق">{% icon "x" %}</button>
   </form>

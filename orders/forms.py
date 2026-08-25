@@ -40,7 +40,7 @@ class CheckoutForm(forms.ModelForm):
         self.store_settings = kwargs.pop("store_settings", None) or StoreSettings.load()
         super().__init__(*args, **kwargs)
         self.fields["governorate"].queryset = ShippingZone.objects.filter(is_active=True)
-        self.fields["governorate"].empty_label = "اختر المحافظة"
+        self.fields["governorate"].empty_label = "— المحافظة —"
         payment_choices = [
             (Order.PaymentMethod.CASH, Order.PaymentMethod.CASH.label),
         ]
@@ -117,7 +117,7 @@ class ReturnRequestForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         if not any(cleaned.get(name, 0) for name in self.fields if name.startswith("item_")):
-            raise forms.ValidationError("اختر كمية لمنتج واحد على الأقل.")
+            raise forms.ValidationError("يجب تحديد كمية لمنتج واحد على الأقل.")
         return cleaned
 
     def save(self, user=None):

@@ -106,7 +106,7 @@ class Offer(TimeStampedModel):
     button_text = models.CharField("نص زر كل العروض", max_length=60, default="كل العروض")
     button_url = models.CharField(
         "رابط مخصص للزر", max_length=255, blank=True,
-        help_text="اتركيه فارغًا لعرض منتجات هذا العرض تلقائيًا.",
+        help_text="يُترك فارغًا لعرض منتجات هذا العرض تلقائيًا.",
     )
     starts_at = models.DateTimeField("بداية العرض", null=True, blank=True)
     ends_at = models.DateTimeField("نهاية العرض", null=True, blank=True)
@@ -161,6 +161,8 @@ class ContentPage(TimeStampedModel):
         ordering = ["title"]
 
     def get_absolute_url(self):
+        if self.slug == "من-نحن":
+            return reverse("core:about")
         return reverse("core:page", kwargs={"slug": self.slug})
 
     def __str__(self):

@@ -7,7 +7,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from core.models import Offer
+from core.models import ContentPage, Offer
 from orders.models import Order, ShippingZone
 from products.models import Category, InventoryBatch, Product
 
@@ -64,6 +64,30 @@ class DashboardPermissionTests(TestCase):
             with self.subTest(name=name):
                 response = self.client.get(reverse(f"dashboard:{name}"))
                 self.assertEqual(response.status_code, 200)
+
+    def test_admin_can_edit_about_copy_without_breaking_its_url(self):
+        user = get_user_model().objects.create_superuser(
+            username="content-admin", password="safe-password", email="content@example.com",
+        )
+        page, _ = ContentPage.objects.update_or_create(
+            slug="من-نحن", defaults={"title": "من نحن", "content": "النص القديم", "is_active": True},
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(reverse("dashboard:page_edit", args=[page.pk]), {
+            "title": "قصتنا",
+            "slug": "رابط-غير-مسموح",
+            "content": "نص جديد من لوحة التحكم",
+            "meta_title": "قصتنا",
+            "meta_description": "تعرفي علينا",
+            "is_active": "on",
+        })
+
+        self.assertRedirects(response, reverse("dashboard:pages"))
+        page.refresh_from_db()
+        self.assertEqual(page.slug, "من-نحن")
+        self.assertEqual(page.content, "نص جديد من لوحة التحكم")
+        self.assertContains(self.client.get(reverse("core:about")), "نص جديد من لوحة التحكم")
 
     def test_order_filters_remain_selected_after_submit(self):
         user = get_user_model().objects.create_superuser(

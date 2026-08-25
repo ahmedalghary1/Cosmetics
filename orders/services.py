@@ -633,8 +633,8 @@ class NotificationService:
             return
         cls._send(
             order,
-            f"تم استلام طلبك {order.order_number}",
-            f"استلمنا طلبك بإجمالي {order.total}. سنرسل لك أي تحديث على حالته.",
+            f"تم استلام الطلب {order.order_number}",
+            f"استلمنا الطلب بإجمالي {order.total}. سنرسل أي تحديث على حالته.",
         )
 
     @classmethod
@@ -648,5 +648,5 @@ class NotificationService:
         cls._send(
             order,
             f"تحديث الطلب {order.order_number}",
-            f"أصبحت حالة طلبك: {order.get_status_display()}.",
+            f"أصبحت حالة الطلب: {order.get_status_display()}.",
         )

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{% if selected_category %}{{ selected_category.name }}{% else %}المتجر{% endif %} | {{ store_settings.store_name }}{% endblock %}
 {% block content %}
-<header class="page-hero shop-hero"><div class="container"><p class="eyebrow">{% if selected_offer %}عرض لفترة محدودة{% else %}كل ما يحتاجه روتينك{% endif %}</p><h1>{% if selected_offer %}{{ selected_offer.title }}{% elif selected_category %}{{ selected_category.name }}{% else %}المتجر{% endif %}</h1>{% if selected_offer.subtitle %}<p>{{ selected_offer.subtitle }}</p>{% elif selected_category.description %}<p>{{ selected_category.description }}</p>{% endif %}</div></header>
+<header class="page-hero shop-hero"><div class="container"><p class="eyebrow">{% if selected_offer %}عرض لفترة محدودة{% else %}كل ما يحتاجه الروتين اليومي{% endif %}</p><h1>{% if selected_offer %}{{ selected_offer.title }}{% elif selected_category %}{{ selected_category.name }}{% else %}المتجر{% endif %}</h1>{% if selected_offer.subtitle %}<p>{{ selected_offer.subtitle }}</p>{% elif selected_category.description %}<p>{{ selected_category.description }}</p>{% endif %}</div></header>
 <div class="container shop-layout section">
   <button class="btn btn-outline filter-toggle" type="button" data-filter-toggle aria-expanded="false" aria-controls="product-filters">{% icon "sliders-horizontal" %}<span>التصفية والترتيب</span></button>
   <aside class="filters panel" data-filters id="product-filters">
@@ -19,6 +19,6 @@
       <button class="btn btn-primary" type="submit">عرض النتائج</button><a class="clear-filter" href="{% if selected_category %}{{ selected_category.get_absolute_url }}{% if selected_offer %}?offer={{ selected_offer.pk }}{% endif %}{% elif selected_offer %}{% url 'products:list' %}?offer={{ selected_offer.pk }}{% else %}{% url 'products:list' %}{% endif %}">مسح الفلاتر</a>
     </form>
   </aside>
-  <section class="shop-results"><div class="results-meta"><p>{{ page_obj.paginator.count }} منتج</p></div>{% if page_obj %}<div class="product-grid">{% for product in page_obj %}{% include "includes/_product_card.html" %}{% empty %}{% url 'products:list' as shop_url %}{% include "includes/_empty_state.html" with title="لا توجد منتجات مطابقة لبحثك" text="جرّبي تغيير الفلاتر أو تصفحي كل المنتجات." url=shop_url action="عرض كل المنتجات" %}{% endfor %}</div>{% include "includes/_pagination.html" %}{% endif %}</section>
+  <section class="shop-results"><div class="results-meta"><p>{{ page_obj.paginator.count }} منتج</p></div>{% if page_obj %}<div class="product-grid">{% for product in page_obj %}{% include "includes/_product_card.html" %}{% empty %}{% url 'products:list' as shop_url %}{% include "includes/_empty_state.html" with title="لا توجد منتجات مطابقة للبحث" text="يمكن تغيير الفلاتر أو عرض كل المنتجات." url=shop_url action="عرض كل المنتجات" %}{% endfor %}</div>{% include "includes/_pagination.html" %}{% endif %}</section>
 </div>
 {% endblock %}

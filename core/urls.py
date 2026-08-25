@@ -10,5 +10,6 @@ urlpatterns = [
     path("sitemap.xml", views.sitemap_xml, name="sitemap"),
     path("search/", views.search, name="search"),
     path("contact/", views.contact, name="contact"),
+    path("about/", views.about, name="about"),
     path("pages/<str:slug>/", views.content_page, name="page"),
 ]

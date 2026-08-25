@@ -139,7 +139,7 @@ OFFERS = (
     {
         "title": "خصم روتين البشرة",
         "eyebrow": "إشراقة كل يوم",
-        "subtitle": "اختاري روتينك اليومي بسعر أخف لفترة محدودة.",
+        "subtitle": "منتجات للروتين اليومي بسعر أخف لفترة محدودة.",
         "skus": ("LUM-SKN-001", "LUM-SKN-002", "LUM-SKN-003"),
         "order": 1,
     },
@@ -238,7 +238,7 @@ class Command(BaseCommand):
                 defaults={
                     "eyebrow": item["eyebrow"],
                     "subtitle": item["subtitle"],
-                    "button_text": "شاهدي العرض",
+                    "button_text": "عرض التفاصيل",
                     "is_active": True,
                     "order": item["order"],
                 },

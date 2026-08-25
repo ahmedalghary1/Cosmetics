@@ -34,8 +34,15 @@ def home(request):
 
 
 def content_page(request, slug):
+    if slug == "من-نحن":
+        return redirect("core:about", permanent=True)
     page = get_object_or_404(ContentPage, slug=slug, is_active=True)
     return render(request, "core/page.html", {"page": page})
+
+
+def about(request):
+    page = get_object_or_404(ContentPage, slug="من-نحن", is_active=True)
+    return render(request, "core/about.html", {"page": page})
 
 
 @rate_limit("contact", limit=5, window=600)

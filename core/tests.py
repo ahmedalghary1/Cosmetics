@@ -65,18 +65,33 @@ class PublicPageSmokeTests(TestCase):
             is_best_seller=True, is_new=True,
         )
         ShippingZone.objects.create(name="القاهرة", shipping_cost=Decimal("60"))
-        ContentPage.objects.create(slug="من-نحن", title="من نحن", content="محتوى")
+        ContentPage.objects.update_or_create(
+            slug="من-نحن", defaults={"title": "من نحن", "content": "محتوى", "is_active": True}
+        )
 
     def test_public_pages_render(self):
         urls = [
             reverse("core:home"), reverse("products:list"),
             self.product.get_absolute_url(), reverse("core:search") + "?q=منتج",
-            reverse("core:contact"), reverse("core:page", args=["من-نحن"]),
+            reverse("core:contact"), reverse("core:about"),
             reverse("cart:detail"), reverse("accounts:login"), reverse("accounts:register"),
         ]
         for url in urls:
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_required_information_pages_are_available(self):
+        slugs = [
+            "الشحن-والتوصيل", "الاستبدال-والاسترجاع", "الأسئلة-الشائعة",
+            "سياسة-الخصوصية", "الشروط-والأحكام",
+        ]
+        for slug in slugs:
+            with self.subTest(slug=slug):
+                self.assertEqual(self.client.get(reverse("core:page", args=[slug])).status_code, 200)
+
+    def test_old_about_url_redirects_to_canonical_page(self):
+        response = self.client.get(reverse("core:page", args=["من-نحن"]))
+        self.assertRedirects(response, reverse("core:about"), status_code=301)
 
     def test_checkout_page_renders_with_session_cart(self):
         self.client.post(reverse("cart:add", args=[self.product.pk]), {"quantity": 1})

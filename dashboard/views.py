@@ -501,7 +501,7 @@ def user_detail(request, pk):
             raise PermissionDenied
         if role_form.is_valid():
             if user == request.user and not role_form.cleaned_data["is_staff"]:
-                role_form.add_error("is_staff", "لا يمكنك إزالة وصولك الإداري أثناء الجلسة.")
+                role_form.add_error("is_staff", "لا يمكن إزالة الوصول الإداري للحساب الحالي أثناء الجلسة.")
             else:
                 role_form.save()
                 messages.success(request, "تم تحديث دور المستخدم.")
@@ -518,7 +518,7 @@ def user_detail(request, pk):
 def user_toggle(request, pk):
     user = get_object_or_404(get_user_model(), pk=pk)
     if user == request.user:
-        messages.error(request, "لا يمكنك تعطيل حسابك الحالي.")
+        messages.error(request, "لا يمكن تعطيل الحساب الحالي.")
     elif user.is_staff and not request.user.is_superuser:
         raise PermissionDenied
     else:
@@ -610,7 +610,8 @@ def page_form(request, pk=None):
     if not request.user.is_superuser and not request.user.has_perm(required):
         raise PermissionDenied
     instance = get_object_or_404(ContentPage, pk=pk) if pk else None
-    return _model_form(request, ContentPageForm, "dashboard:pages", "صفحة محتوى", instance)
+    title = f"تعديل صفحة: {instance.title}" if instance else "إضافة صفحة محتوى"
+    return _model_form(request, ContentPageForm, "dashboard:pages", title, instance)
 
 
 @dashboard_permission("core.view_socialgalleryimage")

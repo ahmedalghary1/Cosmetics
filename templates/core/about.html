@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ page.meta_title|default:page.title }} | {{ store_settings.store_name }}{% endblock %}
+{% block meta_description %}{{ page.meta_description|default:page.title }}{% endblock %}
+{% block content %}
+<header class="page-hero about-hero">
+  <div class="container narrow">
+    <p class="eyebrow">قصتنا</p>
+    <h1>{{ page.title }}</h1>
+  </div>
+</header>
+<section class="container narrow section about-page">
+  <article class="panel prose about-content">{{ page.content|linebreaks }}</article>
+  <a class="btn btn-primary" href="{% url 'products:list' %}"><span>عرض منتجاتنا</span>{% icon "arrow-left" %}</a>
+</section>
+{% endblock %}

@@ -133,23 +133,40 @@ class OfferForm(StyledModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["products"].queryset = Product.objects.select_related("category").order_by("name")
-        self.fields["products"].help_text = "اختاري منتجًا واحدًا أو أكثر. استخدمي Ctrl (أو Command) لاختيار عدة منتجات."
+        self.fields["products"].help_text = "حدد منتجًا واحدًا أو أكثر. يمكن استخدام Ctrl (أو Command) لاختيار عدة منتجات."
 
     def clean_products(self):
         products = self.cleaned_data["products"]
         invalid = [product.name for product in products if not product.old_price or product.old_price <= product.price]
         if invalid:
             raise forms.ValidationError(
-                "أضيفي سعرًا قديمًا أعلى من السعر الحالي لهذه المنتجات أولًا: " + "، ".join(invalid)
+                "يجب إضافة سعر قديم أعلى من السعر الحالي لهذه المنتجات أولًا: " + "، ".join(invalid)
             )
         return products
 
 
 class ContentPageForm(StyledModelForm):
+    REQUIRED_PAGE_SLUGS = {
+        "من-نحن", "الشحن-والتوصيل", "الاستبدال-والاسترجاع",
+        "الأسئلة-الشائعة", "سياسة-الخصوصية", "الشروط-والأحكام",
+    }
+
     class Meta:
         model = ContentPage
         fields = ["title", "slug", "content", "meta_title", "meta_description", "is_active"]
-        widgets = {"content": forms.Textarea(attrs={"rows": 12})}
+        widgets = {
+            "content": forms.Textarea(attrs={"rows": 12}),
+            "meta_description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["content"].help_text = "محتوى الصفحة كما سيظهر للزوار. يُترك سطر فارغ بين الفقرات."
+        self.fields["meta_title"].help_text = "اختياري: عنوان مختصر يظهر في نتائج البحث."
+        self.fields["meta_description"].help_text = "اختياري: وصف موجز للصفحة في نتائج البحث."
+        if self.instance.pk and self.instance.slug in self.REQUIRED_PAGE_SLUGS:
+            self.fields["slug"].disabled = True
+            self.fields["slug"].help_text = "رابط صفحة أساسية ومحمي من التغيير حتى تظل روابط الموقع تعمل."
 
 
 class StoreSettingsForm(StyledModelForm):
