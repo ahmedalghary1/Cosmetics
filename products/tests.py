@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.test import TestCase
 from django.core.exceptions import ValidationError
+from django.urls import reverse
 
 from .models import BundleItem, Category, InventoryBatch, Product, ProductVariant
 
@@ -30,6 +31,23 @@ class ProductModelTests(TestCase):
             description="وصف", price=Decimal("50.00"), stock_quantity=0,
         )
         self.assertFalse(product.in_stock)
+
+    def test_product_can_appear_in_multiple_categories(self):
+        second_category = Category.objects.create(name="الأكثر مبيعًا")
+        product = Product.objects.create(
+            name="كريم متعدد الأقسام", sku="MULTI-CATEGORY", category=self.category,
+            description="وصف", price=Decimal("75.00"), stock_quantity=2,
+        )
+        product.categories.add(second_category)
+
+        self.assertCountEqual(
+            product.categories.values_list("pk", flat=True),
+            [self.category.pk, second_category.pk],
+        )
+        response = self.client.get(
+            reverse("product_categories:detail", args=[second_category.slug]),
+        )
+        self.assertContains(response, product.name)
 
     def test_bundle_stock_is_limited_by_its_components(self):
         first = Product.objects.create(

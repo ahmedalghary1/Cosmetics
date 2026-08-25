@@ -165,7 +165,7 @@ class Offer(TimeStampedModel):
                 Product.objects.filter(pk=self.bundle_product_id).update(is_active=False)
             return None
 
-        components = list(self.products.select_related("category"))
+        components = list(self.products.select_related("category").prefetch_related("categories"))
         if not components:
             return None
         old_price = self.bundle_old_price or sum(
@@ -194,6 +194,12 @@ class Offer(TimeStampedModel):
             bundle = Product.objects.create(sku=f"OFFER-{self.pk}", **defaults)
             Offer.objects.filter(pk=self.pk).update(bundle_product=bundle)
             self.bundle_product = bundle
+        category_ids = {
+            category.pk
+            for component in components
+            for category in component.categories.all()
+        }
+        bundle.categories.set(category_ids or [components[0].category_id])
         BundleItem.objects.filter(bundle=bundle).delete()
         BundleItem.objects.bulk_create([
             BundleItem(bundle=bundle, product=product, quantity=1)

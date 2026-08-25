@@ -64,7 +64,7 @@ def coupon_eligible_subtotal(coupon, cart_items):
             for item in cart_items
             if unrestricted
             or item["product"].pk in product_ids
-            or item["product"].category_id in category_ids
+            or item["product"].categories.filter(pk__in=category_ids).exists()
         ),
         Decimal("0.00"),
     )

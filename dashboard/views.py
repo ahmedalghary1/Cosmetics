@@ -26,7 +26,7 @@ from products.models import Category, InventoryBatch, Product, ProductImage, Pro
 
 from .forms import (
     BannerForm, CategoryForm, ContentPageForm, CouponForm, OfferForm, OrderUpdateForm,
-    BundleItemFormSet, InventoryBatchForm, ProductForm, ProductVariantForm, RoutineStepForm, ShippingZoneForm,
+    InventoryBatchForm, ProductForm, ProductVariantForm, RoutineStepForm, ShippingZoneForm,
     ReturnUpdateForm, SocialGalleryForm, StoreSettingsForm, UserRoleForm, VariantOptionForm,
 )
 from .decorators import dashboard_permission, staff_required
@@ -66,8 +66,8 @@ def export_csv(request, report):
             writer.writerow([order.order_number, order.created_at, order.full_name, order.phone, order.get_status_display(), order.get_payment_status_display(), order.total, order.refunded_amount])
     elif report == "products":
         writer.writerow(["SKU", "المنتج", "التصنيف", "السعر", "المخزون", "المحجوز", "نشط"])
-        for product in Product.objects.select_related("category").iterator():
-            writer.writerow([product.sku, product.name, product.category.name, product.price, product.stock_quantity, product.reserved_quantity, product.is_active])
+        for product in Product.objects.select_related("category").prefetch_related("categories").iterator(chunk_size=100):
+            writer.writerow([product.sku, product.name, "، ".join(category.name for category in product.categories.all()), product.price, product.stock_quantity, product.reserved_quantity, product.is_active])
     elif report == "inventory":
         writer.writerow(["المنتج", "الخيار", "التشغيلة", "الكمية", "المحجوز", "الصلاحية", "التكلفة"])
         for batch in InventoryBatch.objects.select_related("product", "variant").iterator():
@@ -156,13 +156,13 @@ def home(request):
 
 @dashboard_permission("products.view_product")
 def product_list(request):
-    products = Product.objects.select_related("category")
+    products = Product.objects.select_related("category").prefetch_related("categories")
     query = request.GET.get("q", "").strip()
     if query:
         products = products.filter(Q(name__icontains=query) | Q(sku__icontains=query))
     category = request.GET.get("category")
     if category:
-        products = products.filter(category_id=category)
+        products = products.filter(categories__id=category).distinct()
     return render(request, "dashboard/products.html", {
         "page_obj": paginate(request, products),
         "categories": Category.objects.all(),
@@ -177,24 +177,7 @@ def product_form(request, pk=None):
         raise PermissionDenied
     product = get_object_or_404(Product, pk=pk) if pk else None
     form = ProductForm(request.POST or None, request.FILES or None, instance=product)
-    bundle_formset = BundleItemFormSet(
-        request.POST or None,
-        instance=product or form.instance,
-        prefix="bundle",
-    )
     if request.method == "POST" and form.is_valid():
-        bundle_formset.instance = form.instance
-        bundle_valid = bundle_formset.is_valid()
-        if not form.cleaned_data.get("is_bundle"):
-            bundle_valid = True
-        if not bundle_valid:
-            return render(request, "dashboard/form.html", {
-                "form": form,
-                "formset": bundle_formset,
-                "title": "تعديل المنتج" if product else "إضافة منتج",
-                "product": product,
-                "additional_images": True,
-            })
         try:
             optimized_images = []
             for image in request.FILES.getlist("additional_images"):
@@ -202,11 +185,6 @@ def product_form(request, pk=None):
                 optimized_images.append(optimize_uploaded_image(image))
             with transaction.atomic():
                 product = form.save()
-                if product.is_bundle:
-                    bundle_formset.instance = product
-                    bundle_formset.save()
-                else:
-                    product.bundle_items.all().delete()
                 product.images.filter(pk__in=request.POST.getlist("delete_images")).delete()
                 start_order = product.images.count()
                 for index, image in enumerate(optimized_images, start_order):
@@ -220,7 +198,7 @@ def product_form(request, pk=None):
             return redirect("dashboard:products")
     return render(request, "dashboard/form.html", {
         "form": form, "title": "تعديل المنتج" if product else "إضافة منتج",
-        "product": product, "additional_images": True, "formset": bundle_formset,
+        "product": product, "additional_images": True,
     })
 
 
@@ -258,7 +236,7 @@ def product_toggle(request, pk):
 
 @dashboard_permission("products.view_product", "products.view_inventorybatch")
 def inventory(request):
-    products = Product.objects.select_related("category").order_by("stock_quantity", "name")
+    products = Product.objects.select_related("category").prefetch_related("categories").order_by("stock_quantity", "name")
     return render(request, "dashboard/inventory.html", {
         "page_obj": paginate(request, products),
         "expiring_batches": InventoryBatch.objects.filter(
@@ -352,7 +330,8 @@ def batch_form(request, pk=None):
 
 @dashboard_permission("products.view_category")
 def category_list(request):
-    return render(request, "dashboard/categories.html", {"categories": Category.objects.all()})
+    categories = Category.objects.annotate(product_count=Count("products_in_section", distinct=True))
+    return render(request, "dashboard/categories.html", {"categories": categories})
 
 
 @dashboard_permission("products.view_category")
@@ -373,8 +352,8 @@ def category_form(request, pk=None):
 @require_POST
 def category_delete(request, pk):
     category = get_object_or_404(Category, pk=pk)
-    if category.products.exists():
-        messages.error(request, "لا يمكن حذف تصنيف يحتوي على منتجات.")
+    if category.products_in_section.exists():
+        messages.error(request, "لا يمكن حذف قسم مرتبط بمنتجات.")
     else:
         category.delete()
         messages.success(request, "تم حذف التصنيف.")

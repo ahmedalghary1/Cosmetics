@@ -1,1 +1,15 @@
-{% extends "dashboard/base.html" %}{% block title %}التصنيفات{% endblock %}{% block dashboard_content %}<div class="dashboard-heading"><h1>التصنيفات</h1><a class="btn btn-primary" href="{% url 'dashboard:category_add' %}">{% icon "plus" %}<span>إضافة تصنيف</span></a></div><section class="dashboard-panel"><div class="table-wrap"><table><thead><tr><th>التصنيف</th><th>الرابط</th><th>الترتيب</th><th>المنتجات</th><th></th></tr></thead><tbody>{% for category in categories %}<tr><td>{{ category.name }}</td><td>{{ category.slug }}</td><td>{{ category.order }}</td><td>{{ category.products.count }}</td><td><div class="table-actions"><a href="{% url 'dashboard:category_edit' category.pk %}">{% icon "pencil" %}<span>تعديل</span></a><form method="post" action="{% url 'dashboard:category_delete' category.pk %}" data-confirm="هل أنت متأكد من حذف التصنيف؟">{% csrf_token %}<button class="danger-text">{% icon "trash-2" %}<span>حذف</span></button></form></div></td></tr>{% endfor %}</tbody></table></div></section>{% endblock %}
+{% extends "dashboard/base.html" %}
+{% block title %}الأقسام{% endblock %}
+{% block dashboard_content %}
+<div class="dashboard-heading"><h1>الأقسام</h1><a class="btn btn-primary" href="{% url 'dashboard:category_add' %}">{% icon "plus" %}<span>إضافة قسم</span></a></div>
+<section class="dashboard-panel">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>القسم</th><th>الرابط</th><th>الترتيب</th><th>المنتجات</th><th></th></tr></thead>
+      <tbody>
+        {% for category in categories %}<tr><td>{{ category.name }}</td><td>{{ category.slug }}</td><td>{{ category.order }}</td><td>{{ category.product_count }}</td><td><div class="table-actions"><a href="{% url 'dashboard:category_edit' category.pk %}">{% icon "pencil" %}<span>تعديل</span></a><form method="post" action="{% url 'dashboard:category_delete' category.pk %}" data-confirm="هل أنت متأكد من حذف القسم؟">{% csrf_token %}<button class="danger-text">{% icon "trash-2" %}<span>حذف</span></button></form></div></td></tr>{% empty %}<tr><td colspan="5">لا توجد أقسام.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

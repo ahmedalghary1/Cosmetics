@@ -17,25 +17,25 @@ SORT_OPTIONS = {
 
 
 def product_list(request, category_slug=None):
-    products = Product.objects.active().select_related("category")
+    products = Product.objects.active().select_related("category").prefetch_related("categories")
     selected_category = None
     selected_offer = None
     filter_form = ProductFilterForm(request.GET or None)
     filters = filter_form.cleaned_data if filter_form.is_valid() else {}
     if category_slug:
         selected_category = get_object_or_404(Category, slug=category_slug, is_active=True)
-        products = products.filter(category=selected_category)
+        products = products.filter(categories=selected_category).distinct()
 
     query = filters.get("q", "").strip()
     if query:
         products = products.filter(
             Q(name__icontains=query)
             | Q(description__icontains=query)
-            | Q(category__name__icontains=query)
+            | Q(categories__name__icontains=query)
         ).distinct()
     category_filter = filters.get("category", "").strip()
     if category_filter and not selected_category:
-        products = products.filter(category__slug=category_filter)
+        products = products.filter(categories__slug=category_filter).distinct()
     if filters.get("min_price") is not None:
         products = products.filter(price__gte=filters["min_price"])
     if filters.get("max_price") is not None:
@@ -88,13 +88,13 @@ def product_list(request, category_slug=None):
 def product_detail(request, slug):
     product = get_object_or_404(
         Product.objects.active().select_related("category").prefetch_related(
-            "images", "variants", "bundle_items__product", "bundle_items__variant",
+            "categories", "images", "variants", "bundle_items__product", "bundle_items__variant",
         ), slug=slug
     )
     related = (
         Product.objects.active()
-        .filter(category=product.category)
+        .filter(categories__in=product.categories.all())
         .exclude(pk=product.pk)
-        .select_related("category")[:4]
+        .select_related("category").prefetch_related("categories").distinct()[:4]
     )
     return render(request, "products/detail.html", {"product": product, "related_products": related})

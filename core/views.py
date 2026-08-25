@@ -12,7 +12,7 @@ from .models import Banner, ContentPage, Offer, RoutineStep, SocialGalleryImage
 
 
 def home(request):
-    products = Product.objects.active().select_related("category")
+    products = Product.objects.active().select_related("category").prefetch_related("categories")
     current_offers = Offer.objects.current()
     bundle_offers = current_offers.filter(
         sell_as_bundle=True,
@@ -21,7 +21,7 @@ def home(request):
     ).select_related("bundle_product")
     offer = current_offers.filter(sell_as_bundle=False).first()
     if offer:
-        offer_products = offer.products.active().select_related("category")[:5]
+        offer_products = offer.products.active().select_related("category").prefetch_related("categories")[:5]
     else:
         offer_products = Product.objects.none()
     context = {
@@ -63,13 +63,13 @@ def contact(request):
 
 def search(request):
     query = request.GET.get("q", "").strip()
-    products = Product.objects.active().select_related("category")
+    products = Product.objects.active().select_related("category").prefetch_related("categories")
     if query:
         products = products.filter(
             Q(name__icontains=query)
             | Q(short_description__icontains=query)
             | Q(description__icontains=query)
-            | Q(category__name__icontains=query)
+            | Q(categories__name__icontains=query)
         ).distinct()
     else:
         products = products.none()

@@ -12,7 +12,7 @@ class StyledModelForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
-            if not isinstance(field.widget, forms.CheckboxInput):
+            if not isinstance(field.widget, (forms.CheckboxInput, forms.CheckboxSelectMultiple)):
                 field.widget.attrs.setdefault("class", "form-control")
 
     def clean(self):
@@ -23,12 +23,17 @@ class StyledModelForm(forms.ModelForm):
         return cleaned
 
 
+class OfferProductChoiceField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, product):
+        return f"{product.name} — {product.sku} — {product.category.name}"
+
+
 class ProductForm(StyledModelForm):
     class Meta:
         model = Product
         fields = [
-            "name", "slug", "sku", "category", "short_description", "description",
-            "price", "old_price", "stock_quantity", "is_bundle", "has_variants", "main_image", "ingredients", "usage",
+            "name", "slug", "sku", "categories", "short_description", "description",
+            "price", "stock_quantity", "has_variants", "main_image", "ingredients", "usage",
             "brand", "country_of_origin", "key_ingredients", "benefits", "warnings",
             "suitable_for", "skin_types", "hair_types", "size_label", "pao_months",
             "cruelty_free", "vegan",
@@ -39,15 +44,16 @@ class ProductForm(StyledModelForm):
             "ingredients": forms.Textarea(attrs={"rows": 4}),
             "usage": forms.Textarea(attrs={"rows": 4}),
             "main_image": forms.ClearableFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}),
+            "categories": forms.CheckboxSelectMultiple(attrs={"data-choice-picker-options": ""}),
         }
 
     def clean(self):
         cleaned = super().clean()
-        if cleaned.get("is_bundle"):
-            cleaned["stock_quantity"] = 0
-            cleaned["has_variants"] = False
-            self.instance.stock_quantity = 0
-            self.instance.has_variants = False
+        categories = cleaned.get("categories")
+        if categories:
+            self.instance.category = categories[0]
+        if not self.instance.pk:
+            self.instance.is_bundle = False
         return cleaned
 
 
@@ -176,6 +182,12 @@ class BannerForm(StyledModelForm):
 
 
 class OfferForm(StyledModelForm):
+    products = OfferProductChoiceField(
+        label="المنتجات",
+        queryset=Product.objects.none(),
+        widget=forms.CheckboxSelectMultiple(attrs={"data-choice-picker-options": ""}),
+    )
+
     class Meta:
         model = Offer
         fields = [
@@ -185,15 +197,18 @@ class OfferForm(StyledModelForm):
         ]
         widgets = {
             "image": forms.ClearableFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}),
-            "products": forms.SelectMultiple(attrs={"size": 10}),
             "starts_at": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
             "ends_at": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["products"].queryset = Product.objects.select_related("category").order_by("name")
-        self.fields["products"].help_text = "حدد منتجًا واحدًا أو أكثر. يمكن استخدام Ctrl (أو Command) لاختيار عدة منتجات."
+        self.fields["products"].queryset = Product.objects.filter(
+            is_active=True, is_bundle=False, has_variants=False,
+        ).select_related("category").prefetch_related("categories").order_by("name")
+        self.fields["products"].help_text = "اضغطي على المنتجات المطلوبة مباشرة، ويمكنك البحث والتحديد باللمس من الهاتف."
+        if not self.instance.pk:
+            self.initial.setdefault("sell_as_bundle", True)
 
     def clean_products(self):
         products = self.cleaned_data["products"]

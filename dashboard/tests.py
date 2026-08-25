@@ -11,7 +11,7 @@ from PIL import Image
 
 from core.models import ContentPage, Offer
 from orders.models import Order, ShippingZone
-from products.models import BundleItem, Category, InventoryBatch, Product
+from products.models import Category, InventoryBatch, Product
 
 
 def image_upload(name="offer.jpg"):
@@ -159,6 +159,11 @@ class DashboardPermissionTests(TestCase):
         )
         self.client.force_login(user)
 
+        form_response = self.client.get(reverse("dashboard:offer_add"))
+        self.assertContains(form_response, "data-choice-search")
+        self.assertContains(form_response, first.sku)
+        self.assertNotContains(form_response, "Ctrl")
+
         response = self.client.post(reverse("dashboard:offer_add"), {
             "eyebrow": "بوكس كامل", "title": "بوكس العناية الشخصية",
             "subtitle": "كل منتجات العناية في بوكس واحد",
@@ -186,43 +191,30 @@ class DashboardPermissionTests(TestCase):
         cart = self.client.session["cart"]
         self.assertEqual(cart, {f"p:{bundle.pk}": 1})
 
-    def test_catalog_manager_can_create_bundle_with_components(self):
+    def test_product_form_uses_multiple_categories_and_cannot_create_offers(self):
         user = self.user_for_role("Catalog Manager")
-        category = Category.objects.create(name="الباقات")
-        component = Product.objects.create(
-            name="كريم مكوّن", sku="COMPONENT-1", category=category,
-            description="وصف", price=Decimal("100"), stock_quantity=5,
-        )
+        first_category = Category.objects.create(name="العناية")
+        second_category = Category.objects.create(name="الأكثر مبيعًا")
         self.client.force_login(user)
 
+        form_response = self.client.get(reverse("dashboard:product_add"))
+        self.assertNotContains(form_response, 'name="old_price"')
+        self.assertNotContains(form_response, 'name="is_bundle"')
+        self.assertContains(form_response, "data-choice-picker")
+
         response = self.client.post(reverse("dashboard:product_add"), {
-            "name": "بوكس العناية", "slug": "", "sku": "BUNDLE-1",
-            "category": category.pk, "short_description": "باقة كاملة",
-            "description": "وصف الباقة", "price": "250.00", "old_price": "300.00",
-            "stock_quantity": 0, "is_bundle": "on", "is_active": "on",
-            "bundle-TOTAL_FORMS": 3, "bundle-INITIAL_FORMS": 0,
-            "bundle-MIN_NUM_FORMS": 0, "bundle-MAX_NUM_FORMS": 1000,
-            "bundle-0-product": component.pk, "bundle-0-variant": "",
-            "bundle-0-quantity": 2,
-            "bundle-1-product": "", "bundle-1-variant": "", "bundle-1-quantity": 1,
-            "bundle-2-product": "", "bundle-2-variant": "", "bundle-2-quantity": 1,
+            "name": "كريم متعدد الأقسام", "slug": "", "sku": "MULTI-1",
+            "categories": [first_category.pk, second_category.pk],
+            "short_description": "منتج عادي", "description": "وصف المنتج",
+            "price": "250.00", "old_price": "300.00", "stock_quantity": 5,
+            "is_bundle": "on", "is_active": "on",
         })
 
-        self.assertRedirects(
-            response,
-            reverse("dashboard:products"),
-            msg_prefix=(
-                f"product_errors={response.context['form'].errors if response.status_code == 200 else {}} "
-                f"bundle_errors={response.context['formset'].errors if response.status_code == 200 else {}} "
-                f"bundle_non_form={response.context['formset'].non_form_errors() if response.status_code == 200 else {}}"
-            ),
-        )
-        bundle = Product.objects.get(sku="BUNDLE-1")
-        self.assertTrue(bundle.is_bundle)
-        self.assertEqual(
-            BundleItem.objects.get(bundle=bundle, product=component).quantity,
-            2,
-        )
+        self.assertRedirects(response, reverse("dashboard:products"))
+        product = Product.objects.get(sku="MULTI-1")
+        self.assertFalse(product.is_bundle)
+        self.assertIsNone(product.old_price)
+        self.assertCountEqual(product.categories.values_list("pk", flat=True), [first_category.pk, second_category.pk])
 
     def test_unreferenced_product_can_be_deleted(self):
         user = get_user_model().objects.create_superuser(

@@ -1,1 +1,18 @@
-{% extends "dashboard/base.html" %}{% block title %}المخزون{% endblock %}{% block dashboard_content %}<div class="dashboard-heading"><div><p>متابعة الكميات</p><h1>المخزون</h1></div><div class="table-actions"><a class="btn btn-outline" href="{% url 'dashboard:export_csv' 'inventory' %}">{% icon "download" %}<span>CSV</span></a><a class="btn btn-primary" href="{% url 'dashboard:batches' %}">{% icon "calendar-clock" %}<span>التشغيلات والصلاحية</span></a></div></div><section class="dashboard-panel"><div class="table-wrap"><table><thead><tr><th>المنتج</th><th>SKU</th><th>التصنيف</th><th>على الرف</th><th>محجوز</th><th>متاح</th><th></th></tr></thead><tbody>{% for product in page_obj %}<tr><td>{{ product.name }}{% if product.is_bundle %}<small>باقة من مخزون مكوّناتها</small>{% endif %}</td><td>{{ product.sku }}</td><td>{{ product.category.name }}</td><td>{% if product.is_bundle %}—{% else %}{{ product.stock_quantity }}{% endif %}</td><td>{% if product.is_bundle %}—{% else %}{{ product.reserved_quantity }}{% endif %}</td><td><b class="stock-number {% if not product.available_stock %}danger{% elif product.available_stock <= 5 %}warning{% endif %}">{{ product.available_stock }}</b></td><td><a href="{% url 'dashboard:product_edit' product.pk %}">{% icon "pencil" %}<span>تعديل</span></a></td></tr>{% endfor %}</tbody></table></div>{% include "includes/_pagination.html" %}</section>{% if expiring_batches %}<section class="dashboard-panel"><h2>تشغيلات منتهية أو قريبة الانتهاء</h2><ul>{% for batch in expiring_batches %}<li>{{ batch.product.name }} — {{ batch.batch_number }} — {{ batch.expiry_date }} ({{ batch.quantity }})</li>{% endfor %}</ul></section>{% endif %}{% endblock %}
+{% extends "dashboard/base.html" %}
+{% block title %}المخزون{% endblock %}
+{% block dashboard_content %}
+<div class="dashboard-heading">
+  <div><p>متابعة الكميات</p><h1>المخزون</h1></div>
+  <div class="table-actions"><a class="btn btn-outline" href="{% url 'dashboard:export_csv' 'inventory' %}">{% icon "download" %}<span>CSV</span></a><a class="btn btn-primary" href="{% url 'dashboard:batches' %}">{% icon "calendar-clock" %}<span>التشغيلات والصلاحية</span></a></div>
+</div>
+<section class="dashboard-panel">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>المنتج</th><th>SKU</th><th>الأقسام</th><th>على الرف</th><th>محجوز</th><th>متاح</th><th></th></tr></thead>
+      <tbody>{% for product in page_obj %}<tr><td>{{ product.name }}{% if product.is_bundle %}<small>باقة من مخزون مكوّناتها</small>{% endif %}</td><td>{{ product.sku }}</td><td><div class="category-chips">{% for category in product.categories.all %}<span class="category-chip">{{ category.name }}</span>{% empty %}<span class="category-chip">{{ product.category.name }}</span>{% endfor %}</div></td><td>{% if product.is_bundle %}—{% else %}{{ product.stock_quantity }}{% endif %}</td><td>{% if product.is_bundle %}—{% else %}{{ product.reserved_quantity }}{% endif %}</td><td><b class="stock-number {% if not product.available_stock %}danger{% elif product.available_stock <= 5 %}warning{% endif %}">{{ product.available_stock }}</b></td><td><a href="{% url 'dashboard:product_edit' product.pk %}">{% icon "pencil" %}<span>تعديل</span></a></td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% include "includes/_pagination.html" %}
+</section>
+{% if expiring_batches %}<section class="dashboard-panel"><h2>تشغيلات منتهية أو قريبة الانتهاء</h2><ul>{% for batch in expiring_batches %}<li>{{ batch.product.name }} — {{ batch.batch_number }} — {{ batch.expiry_date }} ({{ batch.quantity }})</li>{% endfor %}</ul></section>{% endif %}
+{% endblock %}

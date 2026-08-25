@@ -314,6 +314,36 @@
     if (!window.confirm(form.dataset.confirm)) event.preventDefault();
   }));
 
+  qsa("[data-choice-picker]").forEach(picker => {
+    const search = qs("[data-choice-search]", picker);
+    const choices = qsa('input[type="checkbox"]', picker);
+    const rows = choices.map(choice => choice.closest("label")?.parentElement || choice.closest("label"));
+    const count = qs("[data-choice-count]", picker);
+    const updateCount = () => {
+      const selected = choices.filter(choice => choice.checked).length;
+      if (count) count.textContent = selected ? `تم اختيار ${selected}` : "لم يتم اختيار عناصر";
+    };
+    const filterChoices = () => {
+      const query = (search?.value || "").trim().toLocaleLowerCase("ar");
+      rows.forEach(row => {
+        if (row) row.hidden = Boolean(query) && !row.textContent.toLocaleLowerCase("ar").includes(query);
+      });
+    };
+    search?.addEventListener("input", filterChoices);
+    choices.forEach(choice => choice.addEventListener("change", updateCount));
+    qs("[data-choice-all]", picker)?.addEventListener("click", () => {
+      choices.forEach((choice, index) => {
+        if (!rows[index]?.hidden && !choice.disabled) choice.checked = true;
+      });
+      updateCount();
+    });
+    qs("[data-choice-clear]", picker)?.addEventListener("click", () => {
+      choices.forEach(choice => { if (!choice.disabled) choice.checked = false; });
+      updateCount();
+    });
+    updateCount();
+  });
+
   const dashboardSidebar = qs("[data-dashboard-sidebar]");
   const dashboardOverlay = qs("[data-dashboard-overlay]");
   function setDashboardSidebar(open, restoreFocus = false) {

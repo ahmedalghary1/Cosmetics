@@ -63,7 +63,13 @@ class Product(TimeStampedModel):
     slug = models.SlugField("الرابط", max_length=210, unique=True, allow_unicode=True, blank=True)
     sku = models.CharField("SKU", max_length=60, unique=True)
     category = models.ForeignKey(
-        Category, verbose_name="التصنيف", related_name="products", on_delete=models.PROTECT
+        Category, verbose_name="القسم الأساسي", related_name="products", on_delete=models.PROTECT
+    )
+    categories = models.ManyToManyField(
+        Category,
+        verbose_name="الأقسام",
+        related_name="products_in_section",
+        help_text="يمكن عرض المنتج داخل أكثر من قسم.",
     )
     short_description = models.CharField("وصف مختصر", max_length=300, blank=True)
     description = models.TextField("الوصف")
@@ -143,6 +149,8 @@ class Product(TimeStampedModel):
         if not self.slug:
             self.slug = unique_slug(Product, self.name, self.pk)
         super().save(*args, **kwargs)
+        if self.category_id and not self.categories.filter(pk=self.category_id).exists():
+            self.categories.add(self.category_id)
 
     @property
     def in_stock(self):

@@ -1,1 +1,53 @@
-{% extends "dashboard/base.html" %}{% block title %}{{ title }}{% endblock %}{% block dashboard_content %}<div class="dashboard-heading"><h1>{{ title }}</h1><button type="button" class="btn btn-outline" onclick="history.back()">{% icon "chevron-right" %}<span>رجوع</span></button></div><form method="post" enctype="multipart/form-data" class="dashboard-panel dashboard-form" novalidate>{% csrf_token %}{% if form.non_field_errors %}<div class="message error">{{ form.non_field_errors }}</div>{% endif %}<div class="form-grid">{% for field in form %}<div class="field {% if field.name == 'description' or field.name == 'subtitle' or field.name == 'content' or field.name == 'ingredients' or field.name == 'usage' or field.name == 'products' %}full{% endif %}">{% if field.field.widget.input_type == 'checkbox' %}<label class="check">{{ field }} {{ field.label }}</label>{% else %}<label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>{{ field }}{% endif %}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</div>{% endfor %}{% if formset %}<div class="field full"><h2>مكوّنات الباقة / البوكس</h2><small>تُستخدم هذه الحقول عند تفعيل «باقة / بوكس». اختاري كل منتج والكمية التي تُخصم عند بيع باقة واحدة.</small>{{ formset.management_form }}{% if formset.non_form_errors %}<div class="message error">{{ formset.non_form_errors }}</div>{% endif %}<div class="bundle-formset">{% for bundle_form in formset %}<div class="panel form-grid">{% for hidden in bundle_form.hidden_fields %}{{ hidden }}{% endfor %}{% for field in bundle_form.visible_fields %}<div class="field">{% if field.field.widget.input_type == 'checkbox' %}<label class="check">{{ field }} {{ field.label }}</label>{% else %}<label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>{{ field }}{% endif %}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</div>{% endfor %}</div>{% endfor %}</div></div>{% endif %}{% if additional_images %}<div class="field full"><label for="additional-images">صور إضافية</label><input class="form-control" id="additional-images" type="file" name="additional_images" accept="image/jpeg,image/png,image/webp" multiple>{% if product.images.all %}<div class="existing-images">{% for image in product.images.all %}<label><img src="{{ image.image.url }}" alt="{{ image.alt_text }}"><span><input type="checkbox" name="delete_images" value="{{ image.pk }}"> حذف</span></label>{% endfor %}</div>{% endif %}</div>{% endif %}</div><button class="btn btn-primary" type="submit">{% icon "save" %}<span>حفظ</span></button></form>{% endblock %}
+{% extends "dashboard/base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block dashboard_content %}
+<div class="dashboard-heading">
+  <h1>{{ title }}</h1>
+  <button type="button" class="btn btn-outline" onclick="history.back()">{% icon "chevron-right" %}<span>رجوع</span></button>
+</div>
+<form method="post" enctype="multipart/form-data" class="dashboard-panel dashboard-form" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="message error">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="form-grid">
+    {% for field in form %}
+      <div class="field {% if field.name == 'description' or field.name == 'subtitle' or field.name == 'content' or field.name == 'ingredients' or field.name == 'usage' or field.field.widget.allow_multiple_selected %}full{% endif %}">
+        {% if field.field.widget.allow_multiple_selected %}
+          <div class="choice-picker" data-choice-picker>
+            <div class="choice-picker-heading">
+              <label>{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+              <span data-choice-count>لم يتم اختيار عناصر</span>
+            </div>
+            <div class="choice-picker-tools">
+              <input type="search" class="form-control" placeholder="ابحث داخل القائمة…" aria-label="البحث في {{ field.label }}" data-choice-search>
+              <button type="button" class="btn btn-outline" data-choice-all>تحديد الظاهر</button>
+              <button type="button" class="btn btn-ghost" data-choice-clear>مسح</button>
+            </div>
+            <div class="choice-picker-options" data-choice-options>{{ field }}</div>
+          </div>
+        {% elif field.field.widget.input_type == 'checkbox' %}
+          <label class="check">{{ field }} {{ field.label }}</label>
+        {% else %}
+          <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+          {{ field }}
+        {% endif %}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+    {% endfor %}
+    {% if additional_images %}
+      <div class="field full">
+        <label for="additional-images">صور إضافية</label>
+        <input class="form-control" id="additional-images" type="file" name="additional_images" accept="image/jpeg,image/png,image/webp" multiple>
+        {% if product.images.all %}
+          <div class="existing-images">
+            {% for image in product.images.all %}
+              <label><img src="{{ image.image.url }}" alt="{{ image.alt_text }}"><span><input type="checkbox" name="delete_images" value="{{ image.pk }}"> حذف</span></label>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+  <button class="btn btn-primary" type="submit">{% icon "save" %}<span>حفظ</span></button>
+</form>
+{% endblock %}
