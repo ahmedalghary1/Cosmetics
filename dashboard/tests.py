@@ -1,4 +1,5 @@
 from decimal import Decimal
+from io import BytesIO
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -6,10 +7,17 @@ from django.core.management import call_command
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from PIL import Image
 
 from core.models import ContentPage, Offer
 from orders.models import Order, ShippingZone
 from products.models import BundleItem, Category, InventoryBatch, Product
+
+
+def image_upload(name="offer.jpg"):
+    output = BytesIO()
+    Image.new("RGB", (40, 40), "beige").save(output, "JPEG")
+    return SimpleUploadedFile(name, output.getvalue(), content_type="image/jpeg")
 
 
 @override_settings(SECURE_SSL_REDIRECT=False)
@@ -125,6 +133,46 @@ class DashboardPermissionTests(TestCase):
         })
         self.assertRedirects(response, reverse("dashboard:offers"))
         self.assertTrue(Offer.objects.filter(title="عرض الأسبوع").exists())
+
+    def test_catalog_manager_can_create_offer_as_one_purchasable_bundle(self):
+        user = self.user_for_role("Catalog Manager")
+        category = Category.objects.create(name="العناية الشخصية")
+        first = Product.objects.create(
+            name="بودي سبلاش", sku="BOX-SPRAY", category=category,
+            description="وصف", price=Decimal("300"), stock_quantity=4,
+        )
+        second = Product.objects.create(
+            name="كريم قدم", sku="BOX-CREAM", category=category,
+            description="وصف", price=Decimal("200"), stock_quantity=3,
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(reverse("dashboard:offer_add"), {
+            "eyebrow": "بوكس كامل", "title": "بوكس العناية الشخصية",
+            "subtitle": "كل منتجات العناية في بوكس واحد",
+            "sell_as_bundle": "on", "image": image_upload(),
+            "bundle_price": "400.00", "bundle_old_price": "500.00",
+            "products": [first.pk, second.pk], "button_text": "اطلبي العرض",
+            "button_url": "", "starts_at": "", "ends_at": "",
+            "is_active": "on", "order": 0,
+        })
+
+        self.assertRedirects(response, reverse("dashboard:offers"))
+        offer = Offer.objects.get(title="بوكس العناية الشخصية")
+        bundle = offer.bundle_product
+        self.assertIsNotNone(bundle)
+        self.assertTrue(bundle.is_bundle)
+        self.assertEqual(bundle.price, Decimal("400.00"))
+        self.assertEqual(bundle.bundle_items.count(), 2)
+        self.assertEqual(offer.get_url(), bundle.get_absolute_url())
+
+        home = self.client.get(reverse("core:home"))
+        self.assertContains(home, bundle.get_absolute_url())
+        self.assertContains(self.client.get(bundle.get_absolute_url()), "محتويات الباقة")
+
+        self.client.post(reverse("cart:add", args=[bundle.pk]), {"quantity": 1})
+        cart = self.client.session["cart"]
+        self.assertEqual(cart, {f"p:{bundle.pk}": 1})
 
     def test_catalog_manager_can_create_bundle_with_components(self):
         user = self.user_for_role("Catalog Manager")

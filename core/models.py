@@ -100,8 +100,27 @@ class Offer(TimeStampedModel):
     eyebrow = models.CharField("النص الصغير", max_length=80, default="وقت التدليل")
     title = models.CharField("عنوان العرض", max_length=180)
     subtitle = models.CharField("وصف العرض", max_length=300, blank=True)
+    sell_as_bundle = models.BooleanField(
+        "بيع العرض كباقة واحدة",
+        default=False,
+        help_text="يفتح العرض كمنتج واحد ويُضاف إلى السلة بضغطة واحدة.",
+    )
+    image = models.ImageField(
+        "صورة العرض", upload_to="offers/", blank=True, validators=[validate_image_upload],
+    )
+    bundle_price = models.DecimalField(
+        "سعر العرض كاملًا", max_digits=10, decimal_places=2, null=True, blank=True,
+    )
+    bundle_old_price = models.DecimalField(
+        "السعر قبل العرض", max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="اختياري؛ عند تركه فارغًا يُستخدم مجموع أسعار المنتجات.",
+    )
     products = models.ManyToManyField(
         "products.Product", verbose_name="المنتجات", related_name="offer_campaigns"
+    )
+    bundle_product = models.OneToOneField(
+        "products.Product", related_name="source_bundle_offer", on_delete=models.SET_NULL,
+        null=True, blank=True, editable=False,
     )
     button_text = models.CharField("نص زر كل العروض", max_length=60, default="كل العروض")
     button_url = models.CharField(
@@ -128,9 +147,68 @@ class Offer(TimeStampedModel):
             raise ValidationError({"ends_at": "يجب أن تكون نهاية العرض بعد بدايته."})
 
     def get_url(self):
+        if self.sell_as_bundle and self.bundle_product_id:
+            return self.bundle_product.get_absolute_url()
         if self.button_url:
             return self.button_url
         return f"{reverse('products:list')}?offer={self.pk}"
+
+    def sync_bundle_product(self):
+        from decimal import Decimal
+
+        from products.models import BundleItem, Product
+
+        if not self.pk:
+            return None
+        if not self.sell_as_bundle:
+            if self.bundle_product_id:
+                Product.objects.filter(pk=self.bundle_product_id).update(is_active=False)
+            return None
+
+        components = list(self.products.select_related("category"))
+        if not components:
+            return None
+        old_price = self.bundle_old_price or sum(
+            (product.price for product in components), Decimal("0.00")
+        )
+        defaults = {
+            "name": self.title,
+            "category": components[0].category,
+            "short_description": self.subtitle,
+            "description": self.subtitle or self.title,
+            "price": self.bundle_price,
+            "old_price": old_price,
+            "stock_quantity": 0,
+            "is_bundle": True,
+            "has_variants": False,
+            "main_image": self.image,
+            "is_active": self.is_active,
+            "is_featured": True,
+        }
+        if self.bundle_product_id:
+            bundle = self.bundle_product
+            for field, value in defaults.items():
+                setattr(bundle, field, value)
+            bundle.save()
+        else:
+            bundle = Product.objects.create(sku=f"OFFER-{self.pk}", **defaults)
+            Offer.objects.filter(pk=self.pk).update(bundle_product=bundle)
+            self.bundle_product = bundle
+        BundleItem.objects.filter(bundle=bundle).delete()
+        BundleItem.objects.bulk_create([
+            BundleItem(bundle=bundle, product=product, quantity=1)
+            for product in components
+        ])
+        return bundle
+
+    def delete(self, *args, **kwargs):
+        bundle_product_id = self.bundle_product_id
+        result = super().delete(*args, **kwargs)
+        if bundle_product_id:
+            from products.models import Product
+
+            Product.objects.filter(pk=bundle_product_id).update(is_active=False)
+        return result
 
     @property
     def display_status(self):

@@ -5,6 +5,7 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import F, Q
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.text import slugify
 
 from core.models import TimeStampedModel
@@ -39,7 +40,22 @@ class Category(TimeStampedModel):
 
 class ProductQuerySet(models.QuerySet):
     def active(self):
-        return self.filter(is_active=True, category__is_active=True)
+        now = timezone.now()
+        return self.filter(is_active=True, category__is_active=True).filter(
+            Q(source_bundle_offer__isnull=True)
+            | Q(
+                source_bundle_offer__sell_as_bundle=True,
+                source_bundle_offer__is_active=True,
+            )
+        ).filter(
+            Q(source_bundle_offer__isnull=True)
+            | Q(source_bundle_offer__starts_at__isnull=True)
+            | Q(source_bundle_offer__starts_at__lte=now)
+        ).filter(
+            Q(source_bundle_offer__isnull=True)
+            | Q(source_bundle_offer__ends_at__isnull=True)
+            | Q(source_bundle_offer__ends_at__gte=now)
+        )
 
 
 class Product(TimeStampedModel):

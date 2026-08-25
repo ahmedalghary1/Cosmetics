@@ -14,11 +14,12 @@ from .models import Banner, ContentPage, Offer, RoutineStep, SocialGalleryImage
 def home(request):
     products = Product.objects.active().select_related("category")
     offer = Offer.objects.current().first()
-    offer_products = (
-        offer.products.active().select_related("category")[:5]
-        if offer
-        else Product.objects.none()
-    )
+    if offer and offer.sell_as_bundle and offer.bundle_product_id:
+        offer_products = products.filter(pk=offer.bundle_product_id)
+    elif offer:
+        offer_products = offer.products.active().select_related("category")[:5]
+    else:
+        offer_products = Product.objects.none()
     context = {
         "hero": Banner.objects.filter(position=Banner.Position.HERO, is_active=True).first(),
         "promo": Banner.objects.filter(position=Banner.Position.PROMO, is_active=True).first(),

@@ -621,7 +621,14 @@ def offer_form(request, pk=None):
         raise PermissionDenied
     instance = get_object_or_404(Offer, pk=pk) if pk else None
     title = "تعديل العرض" if instance else "إضافة عرض"
-    return _model_form(request, OfferForm, "dashboard:offers", title, instance)
+    form = OfferForm(request.POST or None, request.FILES or None, instance=instance)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            offer = form.save()
+            offer.sync_bundle_product()
+        messages.success(request, "تم حفظ العرض بنجاح.")
+        return redirect("dashboard:offers")
+    return render(request, "dashboard/form.html", {"form": form, "title": title})
 
 
 @dashboard_permission("core.view_contentpage")

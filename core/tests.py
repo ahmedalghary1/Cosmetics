@@ -150,6 +150,21 @@ class PublicPageSmokeTests(TestCase):
         self.assertNotContains(response, future_offer.title)
         self.assertNotContains(response, disabled_offer.title)
 
+    def test_scheduled_bundle_offer_product_cannot_be_purchased_early(self):
+        offer = Offer.objects.create(
+            title="بوكس قادم",
+            sell_as_bundle=True,
+            image="offers/future.jpg",
+            bundle_price=Decimal("75.00"),
+            starts_at=timezone.now() + timedelta(days=1),
+        )
+        offer.products.add(self.product)
+        bundle = offer.sync_bundle_product()
+
+        self.assertIsNotNone(bundle)
+        self.assertFalse(Product.objects.active().filter(pk=bundle.pk).exists())
+        self.assertEqual(self.client.get(bundle.get_absolute_url()).status_code, 404)
+
     def test_social_gallery_heading_uses_store_name_from_settings(self):
         settings = StoreSettings.load()
         settings.store_name = "بيت الجمال"

@@ -179,10 +179,12 @@ class OfferForm(StyledModelForm):
     class Meta:
         model = Offer
         fields = [
-            "eyebrow", "title", "subtitle", "products", "button_text", "button_url",
+            "eyebrow", "title", "subtitle", "sell_as_bundle", "image",
+            "bundle_price", "bundle_old_price", "products", "button_text", "button_url",
             "starts_at", "ends_at", "is_active", "order",
         ]
         widgets = {
+            "image": forms.ClearableFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}),
             "products": forms.SelectMultiple(attrs={"size": 10}),
             "starts_at": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
             "ends_at": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
@@ -195,12 +197,42 @@ class OfferForm(StyledModelForm):
 
     def clean_products(self):
         products = self.cleaned_data["products"]
+        if self.cleaned_data.get("sell_as_bundle"):
+            invalid = [product.name for product in products if product.is_bundle or product.has_variants]
+            if invalid:
+                raise forms.ValidationError(
+                    "منتجات الباقة يجب أن تكون منتجات عادية بلا خيارات: " + "، ".join(invalid)
+                )
+            return products
         invalid = [product.name for product in products if not product.old_price or product.old_price <= product.price]
         if invalid:
             raise forms.ValidationError(
                 "يجب إضافة سعر قديم أعلى من السعر الحالي لهذه المنتجات أولًا: " + "، ".join(invalid)
             )
         return products
+
+    def clean(self):
+        cleaned = super().clean()
+        if not cleaned.get("sell_as_bundle"):
+            return cleaned
+        image = cleaned.get("image")
+        has_existing_image = image is None and bool(getattr(self.instance, "image", None))
+        if not image and not has_existing_image:
+            self.add_error("image", "صورة العرض مطلوبة عند بيعه كباقة واحدة.")
+        price = cleaned.get("bundle_price")
+        products = cleaned.get("products")
+        if price is None:
+            self.add_error("bundle_price", "أدخلي سعر العرض كاملًا.")
+        elif price <= 0:
+            self.add_error("bundle_price", "سعر العرض يجب أن يكون أكبر من صفر.")
+        if price is not None and products:
+            old_price = cleaned.get("bundle_old_price") or sum(product.price for product in products)
+            if old_price <= price:
+                self.add_error(
+                    "bundle_old_price",
+                    "السعر قبل العرض أو مجموع أسعار المنتجات يجب أن يكون أكبر من سعر العرض.",
+                )
+        return cleaned
 
 
 class ContentPageForm(StyledModelForm):
