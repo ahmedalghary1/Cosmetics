@@ -13,10 +13,14 @@ from .models import Banner, ContentPage, Offer, RoutineStep, SocialGalleryImage
 
 def home(request):
     products = Product.objects.active().select_related("category")
-    offer = Offer.objects.current().first()
-    if offer and offer.sell_as_bundle and offer.bundle_product_id:
-        offer_products = products.filter(pk=offer.bundle_product_id)
-    elif offer:
+    current_offers = Offer.objects.current()
+    bundle_offers = current_offers.filter(
+        sell_as_bundle=True,
+        bundle_product__isnull=False,
+        bundle_product__is_active=True,
+    ).select_related("bundle_product")[:8]
+    offer = current_offers.filter(sell_as_bundle=False).first()
+    if offer:
         offer_products = offer.products.active().select_related("category")[:5]
     else:
         offer_products = Product.objects.none()
@@ -28,6 +32,7 @@ def home(request):
         "new_products": products.filter(is_new=True).order_by("-created_at")[:5],
         "offer": offer,
         "offer_products": offer_products,
+        "bundle_offers": bundle_offers,
         "routine_steps": RoutineStep.objects.filter(is_active=True).select_related("category", "product")[:4],
         "gallery": SocialGalleryImage.objects.filter(is_active=True)[:6],
     }

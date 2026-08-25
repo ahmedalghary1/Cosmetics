@@ -165,6 +165,28 @@ class PublicPageSmokeTests(TestCase):
         self.assertFalse(Product.objects.active().filter(pk=bundle.pk).exists())
         self.assertEqual(self.client.get(bundle.get_absolute_url()).status_code, 404)
 
+    def test_home_shows_each_bundle_offer_as_an_independent_card(self):
+        bundles = []
+        for index in range(2):
+            offer = Offer.objects.create(
+                title=f"باقة مستقلة {index + 1}",
+                subtitle="تفاصيل الباقة",
+                sell_as_bundle=True,
+                image=f"offers/bundle-{index + 1}.jpg",
+                bundle_price=Decimal("80.00"),
+                order=index,
+            )
+            offer.products.add(self.product)
+            bundles.append(offer.sync_bundle_product())
+
+        response = self.client.get(reverse("core:home"))
+
+        self.assertContains(response, "باقاتنا المميزة")
+        self.assertContains(response, 'class="bundle-offer-card"', count=2)
+        for bundle in bundles:
+            self.assertContains(response, bundle.get_absolute_url())
+        self.assertNotContains(response, 'class="section container offers-section"')
+
     def test_social_gallery_heading_uses_store_name_from_settings(self):
         settings = StoreSettings.load()
         settings.store_name = "بيت الجمال"
