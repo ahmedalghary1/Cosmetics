@@ -21,7 +21,7 @@ class Command(BaseCommand):
         store.store_name = "لُمعة"
         store.phone = "01000000000"
         store.whatsapp = "201000000000"
-        store.email = "hello@example.com"
+        store.email = settings.EMAIL_HOST_USER or store.email or "hello@example.com"
         store.address = "القاهرة، مصر"
         store.currency = "ج.م"
         store.free_shipping_threshold = Decimal("1200.00")

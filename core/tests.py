@@ -4,7 +4,8 @@ from decimal import Decimal
 from pathlib import Path
 
 from django.core.management import call_command
-from django.test import SimpleTestCase, TestCase
+from django.core import mail
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -88,6 +89,26 @@ class PublicPageSmokeTests(TestCase):
         for slug in slugs:
             with self.subTest(slug=slug):
                 self.assertEqual(self.client.get(reverse("core:page", args=[slug])).status_code, 200)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        EMAIL_HOST_USER="store@example.com",
+    )
+    def test_contact_message_sends_branded_email_to_store(self):
+        store = StoreSettings.load()
+        store.email = "store@example.com"
+        store.save()
+
+        response = self.client.post(reverse("core:contact"), {
+            "name": "عميلة", "phone": "01012345678", "email": "customer@example.com",
+            "subject": "استفسار عن منتج", "message": "أريد معرفة موعد توفر المنتج.",
+        })
+
+        self.assertRedirects(response, reverse("core:contact"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["store@example.com"])
+        self.assertEqual(mail.outbox[0].reply_to, ["customer@example.com"])
+        self.assertTrue(mail.outbox[0].alternatives)
 
     def test_old_about_url_redirects_to_canonical_page(self):
         response = self.client.get(reverse("core:page", args=["من-نحن"]))

@@ -1,14 +1,16 @@
 from django.contrib import messages
+from django.conf import settings
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import escape
 
 from products.models import Category, Product
+from .emailing import send_templated_email
 from .rate_limit import rate_limit
 
 from .forms import ContactForm
-from .models import Banner, ContentPage, Offer, RoutineStep, SocialGalleryImage
+from .models import Banner, ContentPage, Offer, RoutineStep, SocialGalleryImage, StoreSettings
 
 
 def home(request):
@@ -55,7 +57,21 @@ def about(request):
 def contact(request):
     form = ContactForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        form.save()
+        contact_message = form.save()
+        store = StoreSettings.load()
+        send_templated_email(
+            subject=f"رسالة تواصل جديدة: {contact_message.subject}",
+            recipients=[store.email or settings.EMAIL_HOST_USER],
+            title="رسالة جديدة من الموقع",
+            message=contact_message.message,
+            details=[
+                ("الاسم", contact_message.name),
+                ("الهاتف", contact_message.phone),
+                ("البريد", contact_message.email or "غير مسجل"),
+            ],
+            reply_to=[contact_message.email] if contact_message.email else None,
+            fail_silently=True,
+        )
         messages.success(request, "تم إرسال رسالتك بنجاح، وسنتواصل معك قريبًا.")
         return redirect("core:contact")
     return render(request, "core/contact.html", {"form": form})

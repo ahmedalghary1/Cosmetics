@@ -11,7 +11,8 @@ STORAGES["staticfiles"] = {
         else "whitenoise.storage.CompressedManifestStaticFilesStorage"
     )
 }
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+if not EMAIL_CONFIGURED:
+    raise ImproperlyConfigured("EMAIL_HOST_USER and EMAIL_HOST_PASSWORD are required in production.")
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)

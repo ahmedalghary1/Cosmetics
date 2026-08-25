@@ -7,9 +7,10 @@ from unittest.mock import patch
 
 from django.contrib.sessions.backends.db import SessionStore
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from PIL import Image
@@ -123,6 +124,19 @@ class CheckoutTests(TestCase):
         self.assertEqual(self.product.reserved_quantity, 2)
         self.assertEqual(order.reservations.get().status, InventoryReservation.Status.ACTIVE)
         self.assertTrue(order.audit_logs.filter(action="order_created").exists())
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_order_creation_sends_html_email_when_customer_email_exists(self):
+        form = self.form(data={**self.base_data, "email": "customer@example.com"})
+        self.assertTrue(form.is_valid(), form.errors)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            order = create_order(form=form, cart=self.cart)
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(order.order_number, mail.outbox[0].subject)
+        self.assertEqual(mail.outbox[0].to, ["customer@example.com"])
+        self.assertTrue(mail.outbox[0].alternatives)
 
     def test_confirmation_consumes_reservation_and_delivery_counts_sales(self):
         order = self.create()
@@ -349,7 +363,7 @@ class CheckoutTests(TestCase):
         form = self.form(data=data)
         self.assertTrue(form.is_valid(), form.errors)
         with self.assertLogs("orders.services", level="ERROR"):
-            with patch("orders.services.send_mail", side_effect=RuntimeError("mail unavailable")):
+            with patch("orders.services.send_templated_email", side_effect=RuntimeError("mail unavailable")):
                 with self.captureOnCommitCallbacks(execute=True):
                     order = create_order(form=form, cart=self.cart)
         self.assertTrue(Order.objects.filter(pk=order.pk).exists())

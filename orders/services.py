@@ -3,13 +3,13 @@ from decimal import Decimal
 import logging
 import secrets
 
-from django.core.mail import send_mail
 from django.db import IntegrityError, OperationalError, transaction
 from django.db.models import F, Q, Value
 from django.db.models.functions import Greatest
 from django.utils import timezone
 
 from core.models import StoreSettings
+from core.emailing import send_templated_email
 from products.models import InventoryBatch, Product, ProductVariant
 
 from .models import (
@@ -688,7 +688,17 @@ class NotificationService:
         if not order.email:
             return
         try:
-            send_mail(subject, body, None, [order.email], fail_silently=False)
+            send_templated_email(
+                subject=subject,
+                recipients=[order.email],
+                title=subject,
+                message=body,
+                details=[
+                    ("رقم الطلب", order.order_number),
+                    ("حالة الطلب", order.get_status_display()),
+                    ("الإجمالي", f"{order.total} ج.م"),
+                ],
+            )
         except Exception:
             logger.exception("Order notification failed for %s", order.order_number)
 

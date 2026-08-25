@@ -1,0 +1,7 @@
+{{ title }}
+
+{{ message }}
+{% for label, value in details %}{{ label }}: {{ value }}
+{% endfor %}
+مع تحيات {{ store_name }}
+{% if store_email %}{{ store_email }}{% endif %}

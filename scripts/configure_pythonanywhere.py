@@ -172,13 +172,13 @@ def main() -> None:
             "LOG_LEVEL": values.get("LOG_LEVEL", "WARNING"),
         }
     )
-    values.setdefault("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
-    values.setdefault("EMAIL_HOST", "")
+    values.setdefault("EMAIL_BACKEND", "auto")
+    values.setdefault("EMAIL_HOST", "smtp.gmail.com")
     values.setdefault("EMAIL_PORT", "587")
     values.setdefault("EMAIL_HOST_USER", "")
     values.setdefault("EMAIL_HOST_PASSWORD", "")
     values.setdefault("EMAIL_USE_TLS", "True")
-    values.setdefault("EMAIL_TIMEOUT", "10")
+    values.setdefault("EMAIL_TIMEOUT", "30")
     values.setdefault("DEFAULT_FROM_EMAIL", f"noreply@{host}")
     write_env(env_path, values)
     print(f"Configured {env_path} for https://{host} (secret value not displayed).")

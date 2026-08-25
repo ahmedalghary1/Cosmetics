@@ -29,7 +29,8 @@ class BrandedPasswordResetView(auth_views.PasswordResetView):
     subject_template_name = "registration/password_reset_subject.txt"
 
     def dispatch(self, request, *args, **kwargs):
-        self.extra_email_context = {"store_name": StoreSettings.load().store_name}
+        store = StoreSettings.load()
+        self.extra_email_context = {"store_name": store.store_name, "store_email": store.email}
         return super().dispatch(request, *args, **kwargs)
 
 
