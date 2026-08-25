@@ -315,19 +315,30 @@
   }));
 
   const dashboardSidebar = qs("[data-dashboard-sidebar]");
+  const dashboardOverlay = qs("[data-dashboard-overlay]");
+  function setDashboardSidebar(open, restoreFocus = false) {
+    dashboardSidebar?.classList.toggle("open", open);
+    if (dashboardOverlay) dashboardOverlay.hidden = !open;
+    document.body.classList.toggle("drawer-open", open);
+    qs("[data-dashboard-open]")?.setAttribute("aria-expanded", String(open));
+    if (open) qs("[data-dashboard-close]", dashboardSidebar)?.focus();
+    else if (restoreFocus) qs("[data-dashboard-open]")?.focus();
+  }
   qs("[data-dashboard-open]")?.addEventListener("click", () => {
-    dashboardSidebar?.classList.add("open");
-    document.body.classList.add("drawer-open");
+    setDashboardSidebar(true);
   });
   qs("[data-dashboard-close]")?.addEventListener("click", () => {
-    dashboardSidebar?.classList.remove("open");
-    document.body.classList.remove("drawer-open");
+    setDashboardSidebar(false, true);
   });
+  dashboardOverlay?.addEventListener("click", () => setDashboardSidebar(false, true));
   document.addEventListener("keydown", event => {
     if (event.key === "Escape" && dashboardSidebar?.classList.contains("open")) {
-      dashboardSidebar.classList.remove("open");
-      document.body.classList.remove("drawer-open");
-      qs("[data-dashboard-open]")?.focus();
+      setDashboardSidebar(false, true);
+    }
+  });
+  window.addEventListener("resize", () => {
+    if (window.innerWidth >= 850 && dashboardSidebar?.classList.contains("open")) {
+      setDashboardSidebar(false);
     }
   });
 
@@ -341,6 +352,7 @@
       ".section-heading > *",
       ".category-row > *",
       ".product-grid > *",
+      ".bundle-offers-grid > *",
       ".routine-grid > *",
       ".social-grid > *",
       ".trust-strip .container > *",
@@ -358,7 +370,7 @@
       ".site-footer .footer-grid > *",
       ".site-footer .footer-bottom > *"
     ];
-    const scaleSelectors = ".category-row > *, .product-grid > *, .routine-grid > *, .social-grid > *, .product-detail-grid > .gallery";
+    const scaleSelectors = ".category-row > *, .product-grid > *, .bundle-offers-grid > *, .routine-grid > *, .social-grid > *, .product-detail-grid > .gallery";
     const revealElements = [...new Set(revealSelectors.flatMap(selector => qsa(selector)))]
       .filter(element => !element.closest(".dashboard-body"));
     const groupIndexes = new Map();

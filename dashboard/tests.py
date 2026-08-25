@@ -73,6 +73,18 @@ class DashboardPermissionTests(TestCase):
                 response = self.client.get(reverse(f"dashboard:{name}"))
                 self.assertEqual(response.status_code, 200)
 
+    def test_dashboard_shell_supports_mobile_navigation(self):
+        user = get_user_model().objects.create_superuser(
+            username="mobile-admin", password="safe-password", email="mobile@example.com",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("dashboard:home"))
+
+        self.assertContains(response, "viewport-fit=cover")
+        self.assertContains(response, "data-dashboard-overlay")
+        self.assertContains(response, 'aria-expanded="false"')
+
     def test_admin_can_edit_about_copy_without_breaking_its_url(self):
         user = get_user_model().objects.create_superuser(
             username="content-admin", password="safe-password", email="content@example.com",
