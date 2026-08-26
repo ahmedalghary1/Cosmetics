@@ -125,7 +125,10 @@ class CheckoutTests(TestCase):
         self.assertEqual(order.reservations.get().status, InventoryReservation.Status.ACTIVE)
         self.assertTrue(order.audit_logs.filter(action="order_created").exists())
 
-    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        EMAIL_HOST_USER="admin@example.com",
+    )
     def test_order_creation_sends_html_email_when_customer_email_exists(self):
         form = self.form(data={**self.base_data, "email": "customer@example.com"})
         self.assertTrue(form.is_valid(), form.errors)
@@ -133,10 +136,30 @@ class CheckoutTests(TestCase):
         with self.captureOnCommitCallbacks(execute=True):
             order = create_order(form=form, cart=self.cart)
 
+        self.assertEqual(len(mail.outbox), 2)
+        customer_email = next(email for email in mail.outbox if email.to == ["customer@example.com"])
+        admin_email = next(email for email in mail.outbox if email.to == ["admin@example.com"])
+        self.assertIn(order.order_number, customer_email.subject)
+        self.assertTrue(customer_email.alternatives)
+        self.assertEqual(admin_email.subject, f"طلب جديد — {order.order_number}")
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        EMAIL_HOST_USER="admin@example.com",
+    )
+    def test_instapay_order_notifies_admin_that_payment_needs_review(self):
+        data = {**self.base_data, "payment_method": Order.PaymentMethod.INSTAPAY}
+        form = self.form(data=data, files={"payment_receipt": image_upload()})
+        self.assertTrue(form.is_valid(), form.errors)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            order = create_order(form=form, cart=self.cart)
+
         self.assertEqual(len(mail.outbox), 1)
-        self.assertIn(order.order_number, mail.outbox[0].subject)
-        self.assertEqual(mail.outbox[0].to, ["customer@example.com"])
-        self.assertTrue(mail.outbox[0].alternatives)
+        self.assertEqual(mail.outbox[0].to, ["admin@example.com"])
+        self.assertEqual(mail.outbox[0].subject, f"دفع يحتاج مراجعة — {order.order_number}")
+        self.assertIn("مراجعة", mail.outbox[0].body)
+        order.payment_receipt.delete(save=False)
 
     def test_confirmation_consumes_reservation_and_delivery_counts_sales(self):
         order = self.create()

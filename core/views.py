@@ -1,12 +1,11 @@
 from django.contrib import messages
-from django.conf import settings
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import escape
 
 from products.models import Category, Product
-from .emailing import send_templated_email
+from .emailing import admin_notification_recipients, send_templated_email
 from .rate_limit import rate_limit
 
 from .forms import ContactForm
@@ -58,10 +57,9 @@ def contact(request):
     form = ContactForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         contact_message = form.save()
-        store = StoreSettings.load()
         send_templated_email(
             subject=f"رسالة تواصل جديدة: {contact_message.subject}",
-            recipients=[store.email or settings.EMAIL_HOST_USER],
+            recipients=admin_notification_recipients(),
             title="رسالة جديدة من الموقع",
             message=contact_message.message,
             details=[

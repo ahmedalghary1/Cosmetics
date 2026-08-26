@@ -72,6 +72,8 @@ class AccountTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("متجر الاختبار", mail.outbox[0].body)
         self.assertIn("/account/password-reset/", mail.outbox[0].body)
+        self.assertIn("إذا لم يصدر هذا الطلب منك", mail.outbox[0].body)
+        self.assertNotIn("تطلبي", mail.outbox[0].body)
         self.assertEqual(mail.outbox[0].subject, "استعادة كلمة المرور | متجر الاختبار")
 
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.console.EmailBackend")

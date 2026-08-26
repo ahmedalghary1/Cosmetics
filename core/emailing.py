@@ -10,6 +10,14 @@ from .models import StoreSettings
 logger = logging.getLogger(__name__)
 
 
+def admin_notification_recipients():
+    """Return configured store/admin addresses without sending duplicates."""
+    store = StoreSettings.load()
+    return list(dict.fromkeys(
+        address for address in (store.email, settings.EMAIL_HOST_USER) if address
+    ))
+
+
 def send_templated_email(
     *, subject, recipients, title, message, details=None, reply_to=None, fail_silently=False,
 ):

@@ -9,7 +9,7 @@ from django.db.models.functions import Greatest
 from django.utils import timezone
 
 from core.models import StoreSettings
-from core.emailing import send_templated_email
+from core.emailing import admin_notification_recipients, send_templated_email
 from products.models import InventoryBatch, Product, ProductVariant
 
 from .models import (
@@ -702,6 +702,37 @@ class NotificationService:
         except Exception:
             logger.exception("Order notification failed for %s", order.order_number)
 
+    @staticmethod
+    def _send_to_admin(order):
+        payment_needs_review = order.payment_status == Order.PaymentStatus.PENDING
+        subject = (
+            f"دفع يحتاج مراجعة — {order.order_number}"
+            if payment_needs_review
+            else f"طلب جديد — {order.order_number}"
+        )
+        message = (
+            "تم رفع إثبات تحويل InstaPay ويحتاج إلى مراجعة من لوحة التحكم."
+            if payment_needs_review
+            else "تم تأكيد طلب جديد من خلال المتجر ويحتاج إلى المتابعة."
+        )
+        try:
+            send_templated_email(
+                subject=subject,
+                recipients=admin_notification_recipients(),
+                title=subject,
+                message=message,
+                details=[
+                    ("رقم الطلب", order.order_number),
+                    ("العميل", order.full_name),
+                    ("الهاتف", order.phone),
+                    ("طريقة الدفع", order.get_payment_method_display()),
+                    ("حالة الدفع", order.get_payment_status_display()),
+                    ("الإجمالي", f"{order.total} ج.م"),
+                ],
+            )
+        except Exception:
+            logger.exception("Admin order notification failed for %s", order.order_number)
+
     @classmethod
     def order_created(cls, order_id):
         try:
@@ -713,6 +744,7 @@ class NotificationService:
             f"تم استلام الطلب {order.order_number}",
             f"استلمنا الطلب بإجمالي {order.total}. سنرسل أي تحديث على حالته.",
         )
+        cls._send_to_admin(order)
 
     @classmethod
     def order_updated(cls, order_id, old_status):

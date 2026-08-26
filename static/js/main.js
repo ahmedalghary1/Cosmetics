@@ -4,6 +4,37 @@
   const qs = (selector, scope = document) => scope.querySelector(selector);
   const qsa = (selector, scope = document) => [...scope.querySelectorAll(selector)];
 
+  qsa('input[type="password"]').forEach((input, index) => {
+    if (input.closest(".password-input-wrap")) return;
+    const wrapper = document.createElement("span");
+    wrapper.className = "password-input-wrap";
+    input.before(wrapper);
+    wrapper.append(input);
+
+    if (!input.id) input.id = `password-input-${index + 1}`;
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "password-visibility-toggle";
+    toggle.dataset.passwordToggle = "";
+    toggle.setAttribute("aria-controls", input.id);
+    toggle.setAttribute("aria-pressed", "false");
+    toggle.setAttribute("aria-label", "إظهار كلمة المرور");
+    toggle.title = "إظهار كلمة المرور";
+    toggle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/><path class="password-hidden-slash" d="m3 3 18 18"/></svg>';
+    wrapper.append(toggle);
+
+    toggle.addEventListener("click", () => {
+      const showPassword = input.type === "password";
+      input.type = showPassword ? "text" : "password";
+      toggle.classList.toggle("is-visible", showPassword);
+      toggle.setAttribute("aria-pressed", String(showPassword));
+      const label = showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور";
+      toggle.setAttribute("aria-label", label);
+      toggle.title = label;
+      input.focus({ preventScroll: true });
+    });
+  });
+
   function setDrawer(drawer, overlay, open) {
     if (!drawer) return;
     drawer.classList.toggle("open", open);
