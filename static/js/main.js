@@ -433,7 +433,7 @@
     ];
     const scaleSelectors = ".category-row > *, .product-grid > *, .bundle-offers-grid > *, .routine-grid > *, .social-grid > *, .product-detail-grid > .gallery";
     const revealElements = [...new Set(revealSelectors.flatMap(selector => qsa(selector)))]
-      .filter(element => !element.closest(".dashboard-body"));
+      .filter(element => !element.closest(".dashboard-body") && !element.matches("[data-filters]"));
     const groupIndexes = new Map();
 
     revealElements.forEach(element => {

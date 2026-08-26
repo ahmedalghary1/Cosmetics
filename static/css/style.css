@@ -268,8 +268,8 @@ textarea.form-control, .field textarea { resize: vertical; }
 .check input { width: 18px; height: 18px; accent-color: var(--primary); }
 .shop-layout { position: relative; display: grid; gap: 24px; }
 .filter-toggle { width: 100%; }
-.filters { position: fixed; inset: auto 0 0; z-index: 210; max-height: 88dvh; padding: 22px 22px calc(22px + env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; transform: translateY(110%); border-radius: 24px 24px 0 0; transition: transform .3s; }
-.filters.open { transform: translateY(0); }
+.filters { position: fixed; inset: auto 0 0; z-index: 210; max-height: 88dvh; padding: 22px 22px calc(22px + env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; visibility: hidden; pointer-events: none; transform: translateY(110%); border-radius: 24px 24px 0 0; transition: transform .3s, visibility 0s linear .3s; }
+.filters.open { visibility: visible; pointer-events: auto; transform: translateY(0); transition-delay: 0s; }
 .filters form { display: grid; gap: 12px; }
 .filter-head { display: flex; align-items: center; justify-content: space-between; }
 .filter-head h2 { margin: 0; font-size: 1.2rem; }
@@ -585,7 +585,7 @@ td small { display: block; color: var(--muted); }
   .footer-brand { grid-column: auto; }
   .shop-layout { grid-template-columns: 245px 1fr; align-items: start; }
   .shop-results .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .filters { position: sticky; top: 100px; z-index: 1; max-height: none; padding: 20px; transform: none; border-radius: var(--radius); }
+  .filters { position: sticky; top: 100px; z-index: 1; max-height: none; padding: 20px; visibility: visible; pointer-events: auto; transform: none; border-radius: var(--radius); transition: none; }
   .product-detail-grid { grid-template-columns: minmax(0, 1.15fr) minmax(340px, .85fr); gap: clamp(40px, 7vw, 85px); align-items: start; }
   .product-summary { position: sticky; top: 110px; }
   .product-description { max-width: 760px; margin-inline: auto; margin-top: 70px; }
