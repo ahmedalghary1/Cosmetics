@@ -167,13 +167,21 @@ if EMAIL_BACKEND_SETTING.lower() == "auto":
     EMAIL_BACKEND = (
         "django.core.mail.backends.smtp.EmailBackend"
         if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD
-        else "django.core.mail.backends.console.EmailBackend"
+        else (
+            "django.core.mail.backends.console.EmailBackend"
+            if DEBUG
+            else "django.core.mail.backends.smtp.EmailBackend"
+        )
     )
 else:
     EMAIL_BACKEND = EMAIL_BACKEND_SETTING
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "noreply@example.com")
 SERVER_EMAIL = os.getenv("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
-EMAIL_CONFIGURED = bool(EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
+EMAIL_CONFIGURED = bool(
+    EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend"
+    and EMAIL_HOST_USER
+    and EMAIL_HOST_PASSWORD
+)
 PASSWORD_RESET_TIMEOUT = int(os.getenv("PASSWORD_RESET_TIMEOUT", "3600"))
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30
 SESSION_COOKIE_HTTPONLY = True

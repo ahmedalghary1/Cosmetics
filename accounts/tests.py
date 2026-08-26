@@ -74,6 +74,15 @@ class AccountTests(TestCase):
         self.assertIn("/account/password-reset/", mail.outbox[0].body)
         self.assertEqual(mail.outbox[0].subject, "استعادة كلمة المرور | متجر الاختبار")
 
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.console.EmailBackend")
+    def test_password_reset_does_not_report_success_with_console_backend(self):
+        response = self.client.post(
+            reverse("accounts:password_reset"),
+            {"email": "customer@example.com"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "خدمة إرسال البريد غير مهيأة حاليًا")
+
     def test_inactive_products_are_hidden_from_wishlist(self):
         user = get_user_model().objects.create_user(username="wish", password="safe-password-123")
         category = Category.objects.create(name="البشرة")

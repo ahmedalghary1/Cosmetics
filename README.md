@@ -261,7 +261,7 @@ python manage.py setup_roles --settings=config.settings_pythonanywhere
   ```
 
 - التطبيق يعيد توجيه HTTP إلى HTTPS ويستخدم Cookies آمنة. يبقى HSTS لمدة ساعة مبدئيًا، ولا يُفعل Preload على نطاق PythonAnywhere المشترك.
-- البريد مضبوط افتراضيًا على Console backend، فتظهر الرسائل في Error log ولا تصل للمستخدم. الاتصال بمزودي SMTP/SMS الخارجيين على الخطة المجانية يخضع لقائمة السماح لدى PythonAnywhere؛ لا تفعّل استعادة كلمة المرور بالبريد أو OTP كخدمة فعلية قبل اختبار المزود.
+- في التطوير فقط، يستخدم البريد Console backend عند غياب بيانات SMTP وتعرض صفحة الاستعادة أن الخدمة غير مهيأة. أما إعدادات الإنتاج فترفض تشغيل التطبيق دون `EMAIL_HOST_USER` و`EMAIL_HOST_PASSWORD` حتى لا يظهر نجاح وهمي للمستخدم. الاتصال بمزودي SMTP/SMS الخارجيين على الخطة المجانية يخضع لقائمة السماح لدى PythonAnywhere؛ اختبر المزود بعد ضبطه.
 - يجب تمديد صلاحية Web app المجاني من لوحة PythonAnywhere دوريًا وفق سياسة الحساب.
 
 ملف `.env.pythonanywhere.example` مرجع فقط؛ `.env` الحقيقي مولد محليًا ومستبعد من Git. لا تنشر قيمة `DJANGO_SECRET_KEY` ولا كلمة مرور البريد.

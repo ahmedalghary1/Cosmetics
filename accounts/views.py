@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth import login, update_session_auth_hash, views as auth_views
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -32,6 +33,15 @@ class BrandedPasswordResetView(auth_views.PasswordResetView):
         store = StoreSettings.load()
         self.extra_email_context = {"store_name": store.store_name, "store_email": store.email}
         return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        if settings.EMAIL_BACKEND == "django.core.mail.backends.console.EmailBackend":
+            form.add_error(
+                None,
+                "خدمة إرسال البريد غير مهيأة حاليًا. يرجى التواصل مع إدارة المتجر.",
+            )
+            return self.form_invalid(form)
+        return super().form_valid(form)
 
 
 @rate_limit("register", limit=5, window=3600)
