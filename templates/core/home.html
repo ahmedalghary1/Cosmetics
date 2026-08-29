@@ -2,7 +2,7 @@
 {% block content %}
 <section class="hero">
   {% if hero and hero.image %}
-  <picture style="display: contents;">
+  <picture class="responsive-banner-media">
     {% if hero.image_mobile %}<source media="(max-width: 576px)" srcset="{{ hero.image_mobile.url }}">{% endif %}
     {% if hero.image_tablet %}<source media="(max-width: 992px)" srcset="{{ hero.image_tablet.url }}">{% endif %}
     <img class="hero-bg" src="{{ hero.image.url }}" alt="{{ hero.title }}" width="1800" height="900" fetchpriority="high">
@@ -14,10 +14,10 @@
 {% if best_sellers %}<section class="section container"><div class="section-heading"><div><p class="eyebrow">اختيارات عملائنا</p><h2>الأكثر مبيعًا</h2></div><a class="text-link" href="{% url 'products:list' %}?best=1"><span>عرض الكل</span>{% icon "arrow-left" %}</a></div><div class="product-grid home-products">{% for product in best_sellers %}{% include "includes/_product_card.html" %}{% endfor %}</div></section>{% endif %}
 <section class="promo-banner container">
   {% if promo and promo.image %}
-  <picture style="display: contents;">
+  <picture class="responsive-banner-media">
     {% if promo.image_mobile %}<source media="(max-width: 576px)" srcset="{{ promo.image_mobile.url }}">{% endif %}
     {% if promo.image_tablet %}<source media="(max-width: 992px)" srcset="{{ promo.image_tablet.url }}">{% endif %}
-    <img src="{{ promo.image.url }}" alt="{{ promo.title }}" width="1600" height="720" loading="lazy">
+    <img class="promo-banner-image" src="{{ promo.image.url }}" alt="{{ promo.title }}" width="1600" height="720" loading="lazy">
   </picture>
   {% else %}<img src="{% static 'images/demo/ritual-banner.webp' %}" alt="روتين يومي للعناية" width="1600" height="720" loading="lazy">{% endif %}
   <div><p class="eyebrow">عناية يومية</p><h2>{{ promo.title|default:"لمسة عناية تغيّر اليوم" }}</h2><p>{{ promo.subtitle|default:"روتين بسيط بتركيبات مختارة يمنح البشرة عناية متوازنة كل يوم." }}</p><a class="btn btn-light" href="{{ promo.button_url|default:'/products/' }}"><span>{{ promo.button_text|default:"عرض التفاصيل" }}</span>{% icon "arrow-left" %}</a></div>

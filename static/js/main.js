@@ -493,7 +493,7 @@
 
     const parallaxElements = [
       [qs(".hero-bg"), 18],
-      [qs(".promo-banner > img"), 13],
+      [qs(".promo-banner .promo-banner-image, .promo-banner > img"), 13],
       [qs(".gallery-main img"), 8]
     ].filter(([element]) => element);
     const activeParallax = new Set();

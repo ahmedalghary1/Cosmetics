@@ -16,7 +16,7 @@ from orders.models import ShippingZone
 from orders.models import Order
 from products.models import Category, Product
 
-from .models import ContentPage, Offer, SocialGalleryImage, StoreSettings
+from .models import Banner, ContentPage, Offer, SocialGalleryImage, StoreSettings
 
 
 class SeedCatalogDemoTests(TestCase):
@@ -80,6 +80,34 @@ class PublicPageSmokeTests(TestCase):
         for url in urls:
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_home_renders_responsive_images_for_hero_and_promo_banners(self):
+        for position in (Banner.Position.HERO, Banner.Position.PROMO):
+            Banner.objects.create(
+                position=position,
+                title=f"{position} banner",
+                image=f"banners/{position}-desktop.webp",
+                image_tablet=f"banners/{position}-tablet.webp",
+                image_mobile=f"banners/{position}-mobile.webp",
+            )
+
+        response = self.client.get(reverse("core:home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="responsive-banner-media"', count=2)
+        for position in (Banner.Position.HERO, Banner.Position.PROMO):
+            self.assertContains(
+                response,
+                f'<source media="(max-width: 576px)" srcset="/media/banners/{position}-mobile.webp">',
+                html=True,
+            )
+            self.assertContains(
+                response,
+                f'<source media="(max-width: 992px)" srcset="/media/banners/{position}-tablet.webp">',
+                html=True,
+            )
+            self.assertContains(response, f'/media/banners/{position}-desktop.webp')
+        self.assertContains(response, 'class="promo-banner-image"')
 
     def test_required_information_pages_are_available(self):
         slugs = [
