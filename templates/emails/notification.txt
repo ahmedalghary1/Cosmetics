@@ -3,5 +3,7 @@
 {{ message }}
 {% for label, value in details %}{{ label }}: {{ value }}
 {% endfor %}
+{% if action_url %}{{ action_label|default:"عرض التفاصيل" }}: {{ action_url }}
+{% endif %}
 مع تحيات {{ store_name }}
 {% if store_email %}{{ store_email }}{% endif %}

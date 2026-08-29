@@ -85,6 +85,20 @@ class DashboardPermissionTests(TestCase):
         self.assertContains(response, "data-dashboard-overlay")
         self.assertContains(response, 'aria-expanded="false"')
 
+    def test_dashboard_home_contains_visual_financial_reports(self):
+        user = get_user_model().objects.create_superuser(
+            username="reports-admin", password="safe-password", email="reports@example.com",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("dashboard:home"), {"report_period": "month"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "تقرير المبيعات")
+        self.assertContains(response, "أكثر المنتجات مبيعًا ومعدل الإرجاع")
+        self.assertContains(response, "أداء الكوبونات")
+        self.assertContains(response, 'value="month" selected')
+
     def test_admin_can_edit_about_copy_without_breaking_its_url(self):
         user = get_user_model().objects.create_superuser(
             username="content-admin", password="safe-password", email="content@example.com",

@@ -1,5 +1,6 @@
 from django.db import models
 from django.db.models import Q
+from django.core.exceptions import ValidationError
 from django.urls import reverse
 from django.utils import timezone
 
@@ -42,6 +43,24 @@ class StoreSettings(TimeStampedModel):
     whatsapp_message = models.CharField(
         "رسالة واتساب الافتراضية", max_length=255, default="مرحبًا، أريد الاستفسار عن منتجاتكم"
     )
+    google_analytics_id = models.CharField(
+        "معرّف Google Analytics 4", max_length=32, blank=True,
+        help_text="مثال: G-XXXXXXXXXX",
+    )
+    meta_pixel_id = models.CharField(
+        "معرّف Meta Pixel", max_length=32, blank=True,
+        help_text="المعرّف الرقمي من Meta Events Manager.",
+    )
+    tiktok_pixel_id = models.CharField(
+        "معرّف TikTok Pixel", max_length=32, blank=True,
+        help_text="المعرّف من TikTok Events Manager.",
+    )
+    customer_order_emails_enabled = models.BooleanField(
+        "إرسال تحديثات الطلب بالبريد للعميل", default=True,
+    )
+    back_in_stock_emails_enabled = models.BooleanField(
+        "إرسال تنبيهات عودة المنتجات للمخزون", default=True,
+    )
 
     class Meta:
         verbose_name = "إعدادات المتجر"
@@ -50,6 +69,23 @@ class StoreSettings(TimeStampedModel):
     def save(self, *args, **kwargs):
         self.pk = 1
         super().save(*args, **kwargs)
+
+    def clean(self):
+        import re
+
+        patterns = {
+            "google_analytics_id": (r"^G-[A-Z0-9]+$", "استخدمي معرّف GA4 صحيحًا مثل G-XXXXXXXXXX."),
+            "meta_pixel_id": (r"^[0-9]+$", "معرّف Meta Pixel يجب أن يحتوي أرقامًا فقط."),
+            "tiktok_pixel_id": (r"^[A-Z0-9]+$", "معرّف TikTok Pixel غير صحيح."),
+        }
+        errors = {}
+        for field, (pattern, message) in patterns.items():
+            value = getattr(self, field, "").strip().upper() if field != "meta_pixel_id" else getattr(self, field, "").strip()
+            setattr(self, field, value)
+            if value and not re.fullmatch(pattern, value):
+                errors[field] = message
+        if errors:
+            raise ValidationError(errors)
 
     def delete(self, *args, **kwargs):
         return None

@@ -11,6 +11,7 @@ from django.utils import timezone
 from core.models import StoreSettings
 from core.emailing import admin_notification_recipients, send_templated_email
 from products.models import InventoryBatch, Product, ProductVariant
+from products.services import notify_back_in_stock_after_commit
 
 from .models import (
     Coupon,
@@ -562,6 +563,9 @@ def transition_order(
             note=payment_note or "",
             ip_address=ip_address,
         )
+        restocked_product_ids = list(order.items.values_list("product_id", flat=True))
+        restocked_product_ids += list(order.reservations.values_list("product_id", flat=True))
+        notify_back_in_stock_after_commit(*restocked_product_ids)
         transaction.on_commit(lambda: NotificationService.order_updated(order.pk, old_status))
         return order
 
@@ -677,6 +681,13 @@ def process_return(return_request, *, new_status, refund_amount, admin_note, res
             new_values={"return_status": new_status, "refund_amount": str(refund_amount)},
             note=admin_note,
         )
+        if new_status == ReturnRequest.Status.RECEIVED and old_status != new_status:
+            product_ids = [
+                item.order_item.product_id
+                for item in return_request.items.all()
+                if item.restocked and item.order_item.product_id
+            ]
+            notify_back_in_stock_after_commit(*product_ids)
         return return_request
 
 
@@ -685,7 +696,7 @@ class NotificationService:
 
     @staticmethod
     def _send(order, subject, body):
-        if not order.email:
+        if not order.email or not StoreSettings.load().customer_order_emails_enabled:
             return
         try:
             send_templated_email(
@@ -754,8 +765,17 @@ class NotificationService:
             return
         if order.status == old_status:
             return
+        status_messages = {
+            Order.Status.CONFIRMED: "تم تأكيد طلبك وبدأ فريقنا في تجهيزه.",
+            Order.Status.PREPARING: "طلبك الآن قيد التجهيز.",
+            Order.Status.SHIPPED: "تم شحن طلبك وهو في طريقه إليك.",
+            Order.Status.DELIVERED: "تم تسليم طلبك بنجاح. شكرًا لاختيارك متجرنا.",
+            Order.Status.CANCELLED: "تم إلغاء الطلب.",
+            Order.Status.PAYMENT_FAILED: "تعذر تأكيد الدفع لهذا الطلب.",
+            Order.Status.REFUNDED: "تم تسجيل استرداد قيمة الطلب.",
+        }
         cls._send(
             order,
             f"تحديث الطلب {order.order_number}",
-            f"أصبحت حالة الطلب: {order.get_status_display()}.",
+            status_messages.get(order.status, f"أصبحت حالة الطلب: {order.get_status_display()}."),
         )

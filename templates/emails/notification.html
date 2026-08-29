@@ -8,6 +8,7 @@
         <h1 style="margin:0 0 14px;color:#593519;font-size:23px">{{ title }}</h1>
         <p style="margin:0 0 20px;line-height:1.9">{{ message }}</p>
         {% if details %}<div style="overflow:hidden;border:1px solid #dfcbb7;border-radius:12px">{% for label, value in details %}<div style="display:flex;justify-content:space-between;gap:18px;padding:11px 14px;{% if not forloop.last %}border-bottom:1px solid #eee0d1;{% endif %}"><strong>{{ label }}</strong><span>{{ value }}</span></div>{% endfor %}</div>{% endif %}
+        {% if action_url %}<p style="margin:24px 0"><a href="{{ action_url }}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#593519;color:#fff;text-decoration:none">{{ action_label|default:"عرض التفاصيل" }}</a></p>{% endif %}
         <p style="margin:24px 0 0;color:#735d4c;font-size:13px">مع تحيات {{ store_name }}{% if store_email %} — {{ store_email }}{% endif %}</p>
       </div>
     </div>

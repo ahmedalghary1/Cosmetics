@@ -202,6 +202,34 @@ class Product(TimeStampedModel):
         return self.name
 
 
+class BackInStockSubscription(TimeStampedModel):
+    product = models.ForeignKey(
+        Product, verbose_name="المنتج", related_name="stock_subscriptions",
+        on_delete=models.CASCADE,
+    )
+    email = models.EmailField("البريد الإلكتروني")
+    is_active = models.BooleanField("بانتظار التنبيه", default=True, db_index=True)
+    notified_at = models.DateTimeField("وقت إرسال التنبيه", null=True, blank=True)
+    product_url = models.URLField("رابط المنتج", max_length=500, blank=True)
+
+    class Meta:
+        verbose_name = "اشتراك عودة للمخزون"
+        verbose_name_plural = "اشتراكات العودة للمخزون"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["product", "email"], name="unique_product_stock_subscription",
+            ),
+        ]
+        indexes = [models.Index(fields=["product", "is_active"])]
+
+    def save(self, *args, **kwargs):
+        self.email = self.email.strip().lower()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.product} — {self.email}"
+
+
 class ProductImage(TimeStampedModel):
     product = models.ForeignKey(Product, related_name="images", on_delete=models.CASCADE)
     image = models.ImageField("الصورة", upload_to="products/gallery/", validators=[validate_image_upload])

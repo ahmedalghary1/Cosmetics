@@ -459,6 +459,22 @@ textarea.form-control, .field textarea { resize: vertical; }
 .stat strong { overflow-wrap: anywhere; font-size: 1.34rem; }
 .stat.warning { border-color: #ead2a6; }
 .stat.danger { border-color: #e8b8b8; }
+.report-period { display: flex; align-items: center; gap: 9px; }
+.report-period label { margin: 0; color: var(--muted); font-size: .8rem; }
+.report-period select { min-width: 115px; }
+.sales-chart { min-height: 265px; display: flex; align-items: stretch; gap: 8px; padding: 24px 4px 0; overflow-x: auto; border-bottom: 1px solid var(--border); }
+.chart-point { min-width: 42px; flex: 1 0 42px; display: grid; grid-template-rows: 28px 180px 30px; align-items: end; justify-items: center; gap: 5px; }
+.chart-value { max-width: 58px; overflow: hidden; color: var(--muted); font-size: .65rem; text-overflow: ellipsis; white-space: nowrap; }
+.chart-bar { width: min(34px, 78%); min-height: 5px; border-radius: 8px 8px 2px 2px; background: linear-gradient(180deg, var(--gold), var(--brown)); }
+.chart-point small { color: var(--muted); font-size: .65rem; white-space: nowrap; }
+.empty-report { margin: auto; color: var(--muted); }
+.report-grid { display: grid; gap: 20px; }
+.rate-badge { display: inline-flex; min-width: 48px; justify-content: center; padding: 4px 8px; border-radius: 999px; background: #edf5ef; color: var(--success); }
+.rate-badge.warning { background: #fff0d5; color: var(--warning); }
+.rate-badge.danger { background: #f9e4e4; color: var(--danger); }
+.back-in-stock-form { display: grid; gap: 10px; }
+.back-in-stock-form > div { display: grid; gap: 8px; }
+.back-in-stock-form small { color: var(--muted); }
 .dashboard-panel { margin-bottom: 22px; padding: 21px; border: 1px solid var(--border); border-radius: 17px; background: white; box-shadow: 0 8px 30px rgba(89,53,25,.05); }
 .dashboard-panel h2 { font-size: 1.24rem; }
 .table-wrap { width: 100%; overflow-x: auto; }
@@ -587,6 +603,8 @@ td small { display: block; color: var(--muted); }
   .shop-results .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .filters { position: sticky; top: 100px; z-index: 1; max-height: none; padding: 20px; visibility: visible; pointer-events: auto; transform: none; border-radius: var(--radius); transition: none; }
   .product-detail-grid { grid-template-columns: minmax(0, 1.15fr) minmax(340px, .85fr); gap: clamp(40px, 7vw, 85px); align-items: start; }
+  .report-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .back-in-stock-form > div { grid-template-columns: 1fr auto; }
   .product-summary { position: sticky; top: 110px; }
   .product-description { max-width: 760px; margin-inline: auto; margin-top: 70px; }
   .cart-layout { grid-template-columns: minmax(0, 1fr) 340px; }

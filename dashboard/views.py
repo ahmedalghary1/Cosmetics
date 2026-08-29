@@ -10,7 +10,7 @@ from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, DecimalField, F, Q, Sum, Value
 from django.db.models.deletion import ProtectedError
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, TruncDay, TruncMonth, TruncWeek
 from django.http import FileResponse, Http404, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -20,9 +20,10 @@ from core.models import Banner, ContactMessage, ContentPage, Offer, RoutineStep,
 from core.rate_limit import rate_limit
 from core.validators import validate_image_upload
 from core.image_utils import optimize_uploaded_image
-from orders.models import Coupon, Order, ReturnRequest, ReturnRequestItem, ShippingZone
+from orders.models import Coupon, CouponRedemption, Order, OrderItem, ReturnRequest, ReturnRequestItem, ShippingZone
 from orders.services import OrderTransitionError, process_return, transition_order
 from products.models import Category, InventoryBatch, Product, ProductImage, ProductVariant, VariantOption
+from products.services import notify_back_in_stock_after_commit
 
 from .forms import (
     BannerForm, CategoryForm, ContentPageForm, CouponForm, OfferForm, OrderUpdateForm,
@@ -33,6 +34,89 @@ from .decorators import dashboard_permission, staff_required
 
 
 PAGE_SIZE = 15
+
+
+def _financial_reports(request):
+    period = request.GET.get("report_period", "day")
+    period_options = {
+        "day": (TruncDay, 30, "يومي — آخر 30 يومًا"),
+        "week": (TruncWeek, 84, "أسبوعي — آخر 12 أسبوعًا"),
+        "month": (TruncMonth, 365, "شهري — آخر 12 شهرًا"),
+    }
+    trunc, days, period_label = period_options.get(period, period_options["day"])
+    cutoff = timezone.now() - timedelta(days=days)
+    money_field = DecimalField(max_digits=14, decimal_places=2)
+    recognized_statuses = [Order.Status.DELIVERED, Order.Status.REFUNDED]
+    sales_rows = (
+        Order.objects.filter(status__in=recognized_statuses, delivered_at__gte=cutoff)
+        .annotate(bucket=trunc("delivered_at"))
+        .values("bucket")
+        .annotate(
+            gross=Coalesce(Sum("total"), Value(0), output_field=money_field),
+            refunds=Coalesce(Sum("refunded_amount"), Value(0), output_field=money_field),
+        )
+        .order_by("bucket")
+    )
+    sales_chart = []
+    for row in sales_rows:
+        net = row["gross"] - row["refunds"]
+        sales_chart.append({
+            "label": row["bucket"].strftime("%d/%m" if period != "month" else "%m/%Y"),
+            "value": net,
+        })
+    maximum = max((point["value"] for point in sales_chart), default=0)
+    for point in sales_chart:
+        point["height"] = max(4, int((point["value"] / maximum) * 100)) if maximum else 4
+
+    sold_rows = list(
+        OrderItem.objects.filter(order__status__in=recognized_statuses, product_id__isnull=False)
+        .values("product_id", "product_name", "sku")
+        .annotate(units=Sum("quantity"), revenue=Sum("total_price"))
+        .order_by("-units", "product_name")
+    )
+    returned_rows = ReturnRequestItem.objects.filter(
+        return_request__status__in=[ReturnRequest.Status.RECEIVED, ReturnRequest.Status.REFUNDED],
+        order_item__product_id__isnull=False,
+    ).values("order_item__product_id").annotate(units=Sum("quantity"))
+    returned_by_product = {
+        row["order_item__product_id"]: row["units"] for row in returned_rows
+    }
+    product_performance = []
+    for row in sold_rows:
+        returned = returned_by_product.get(row["product_id"], 0)
+        product_performance.append({
+            **row,
+            "returned_units": returned,
+            "return_rate": (returned / row["units"] * 100) if row["units"] else 0,
+        })
+
+    coupons = Coupon.objects.annotate(
+        attempts=Count("redemptions"),
+        completed_uses=Count(
+            "redemptions", filter=Q(redemptions__status=CouponRedemption.Status.CONSUMED),
+        ),
+        generated_revenue=Coalesce(
+            Sum("redemptions__order__total", filter=Q(redemptions__status=CouponRedemption.Status.CONSUMED)),
+            Value(0), output_field=money_field,
+        ),
+        granted_discount=Coalesce(
+            Sum("redemptions__order__discount", filter=Q(redemptions__status=CouponRedemption.Status.CONSUMED)),
+            Value(0), output_field=money_field,
+        ),
+    ).order_by("-completed_uses", "code")[:10]
+    coupon_performance = []
+    for coupon in coupons:
+        coupon.conversion_rate = (
+            coupon.completed_uses / coupon.attempts * 100 if coupon.attempts else 0
+        )
+        coupon_performance.append(coupon)
+    return {
+        "report_period": period if period in period_options else "day",
+        "report_period_label": period_label,
+        "sales_chart": sales_chart,
+        "product_performance": product_performance[:10],
+        "coupon_performance": coupon_performance,
+    }
 
 
 def paginate(request, queryset, per_page=PAGE_SIZE):
@@ -151,6 +235,8 @@ def home(request):
         "can_view_inventory": can_view_inventory,
         "can_view_customers": can_view_customers,
     }
+    if can_view_financial:
+        context.update(_financial_reports(request))
     return render(request, "dashboard/home.html", context)
 
 
@@ -191,6 +277,7 @@ def product_form(request, pk=None):
                     ProductImage.objects.create(
                         product=product, image=image, alt_text=product.name, order=index,
                     )
+                notify_back_in_stock_after_commit(product.pk)
         except Exception as exc:
             messages.error(request, str(exc))
         else:
@@ -271,6 +358,7 @@ def variant_form(request, product_pk, pk=None):
         form.save_m2m()
         if not product.has_variants:
             Product.objects.filter(pk=product.pk).update(has_variants=True)
+        notify_back_in_stock_after_commit(product.pk)
         messages.success(request, "تم حفظ خيار المنتج.")
         return redirect("dashboard:variants", product_pk=product.pk)
     return render(request, "dashboard/form.html", {"form": form, "title": "خيار منتج"})
@@ -323,6 +411,7 @@ def batch_form(request, pk=None):
                 ).update(stock_quantity=F("stock_quantity") + delta)
                 if not updated:
                     raise ValueError("لا يمكن خفض التشغيلة لأقل من الكمية المحجوزة.")
+            notify_back_in_stock_after_commit(batch.product_id)
         messages.success(request, "تم حفظ تشغيلة المخزون.")
         return redirect("dashboard:batches")
     return render(request, "dashboard/form.html", {"form": form, "title": "تشغيلة مخزون"})

@@ -1,10 +1,14 @@
 from decimal import Decimal
 
-from django.test import TestCase
+from django.core import mail
+from django.test import TestCase, override_settings
 from django.core.exceptions import ValidationError
 from django.urls import reverse
 
-from .models import BundleItem, Category, InventoryBatch, Product, ProductVariant
+from core.models import StoreSettings
+
+from .models import BackInStockSubscription, BundleItem, Category, InventoryBatch, Product, ProductVariant
+from .services import notify_back_in_stock
 
 
 class ProductModelTests(TestCase):
@@ -119,3 +123,46 @@ class ProductModelTests(TestCase):
         batch = InventoryBatch(product=second, variant=variant, batch_number="BAD", quantity=1)
         with self.assertRaises(ValidationError):
             batch.full_clean()
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_back_in_stock_subscription_is_sent_once(self):
+        product = Product.objects.create(
+            name="منتج منتظر", sku="WAITING", category=self.category,
+            description="وصف", price=Decimal("125"), stock_quantity=0,
+        )
+        response = self.client.post(
+            reverse("products:back_in_stock", args=[product.pk]),
+            {"email": "Customer@Example.com"},
+        )
+        self.assertRedirects(response, product.get_absolute_url())
+        subscription = BackInStockSubscription.objects.get()
+        self.assertEqual(subscription.email, "customer@example.com")
+
+        product.stock_quantity = 3
+        product.save(update_fields=["stock_quantity", "updated_at"])
+        self.assertEqual(notify_back_in_stock(product.pk), 1)
+        subscription.refresh_from_db()
+        self.assertFalse(subscription.is_active)
+        self.assertIsNotNone(subscription.notified_at)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(product.name, mail.outbox[0].subject)
+        self.assertEqual(notify_back_in_stock(product.pk), 0)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_product_page_includes_configured_analytics(self):
+        product = Product.objects.create(
+            name="منتج تحليلات", sku="ANALYTICS", category=self.category,
+            description="وصف", price=Decimal("90"), stock_quantity=1,
+        )
+        store = StoreSettings.load()
+        store.google_analytics_id = "G-ABC123"
+        store.meta_pixel_id = "123456789"
+        store.tiktok_pixel_id = "C123ABC"
+        store.full_clean()
+        store.save()
+
+        response = self.client.get(product.get_absolute_url())
+        self.assertContains(response, "www.googletagmanager.com/gtag/js")
+        self.assertContains(response, "connect.facebook.net/en_US/fbevents.js")
+        self.assertContains(response, "analytics.tiktok.com/i18n/pixel/events.js")
+        self.assertContains(response, "product-analytics-data")

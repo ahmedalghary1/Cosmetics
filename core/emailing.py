@@ -20,6 +20,7 @@ def admin_notification_recipients():
 
 def send_templated_email(
     *, subject, recipients, title, message, details=None, reply_to=None, fail_silently=False,
+    action_url="", action_label="",
 ):
     recipients = [address for address in recipients if address]
     if not recipients:
@@ -31,6 +32,8 @@ def send_templated_email(
         "title": title,
         "message": message,
         "details": details or [],
+        "action_url": action_url,
+        "action_label": action_label,
     }
     email = EmailMultiAlternatives(
         subject=subject,

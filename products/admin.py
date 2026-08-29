@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Category, InventoryBatch, Product, ProductImage, ProductVariant, VariantOption
+from .models import BackInStockSubscription, Category, InventoryBatch, Product, ProductImage, ProductVariant, VariantOption
 
 
 class ProductImageInline(admin.TabularInline):
@@ -16,4 +16,4 @@ class ProductAdmin(admin.ModelAdmin):
     inlines = [ProductImageInline]
 
 
-admin.site.register([Category, ProductVariant, VariantOption, InventoryBatch])
+admin.site.register([Category, ProductVariant, VariantOption, InventoryBatch, BackInStockSubscription])

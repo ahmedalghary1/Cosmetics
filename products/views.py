@@ -1,11 +1,15 @@
+from django import forms
+from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import F, Q
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from core.models import Offer
+from core.rate_limit import rate_limit
 
 from .forms import ProductFilterForm
-from .models import Category, Product
+from .models import BackInStockSubscription, Category, Product
 
 
 SORT_OPTIONS = {
@@ -97,4 +101,40 @@ def product_detail(request, slug):
         .exclude(pk=product.pk)
         .select_related("category").prefetch_related("categories").distinct()[:4]
     )
-    return render(request, "products/detail.html", {"product": product, "related_products": related})
+    analytics_product = {
+        "currency": "EGP",
+        "value": float(product.price),
+        "items": [{"item_id": product.sku, "item_name": product.name, "price": float(product.price)}],
+    }
+    return render(request, "products/detail.html", {
+        "product": product, "related_products": related,
+        "analytics_product": analytics_product,
+    })
+
+
+@require_POST
+@rate_limit("back-in-stock", limit=5, window=3600)
+def subscribe_back_in_stock(request, product_id):
+    product = get_object_or_404(Product.objects.active(), pk=product_id)
+    if product.in_stock:
+        messages.info(request, "المنتج متوفر الآن ويمكنك إضافته إلى السلة.")
+        return redirect(product.get_absolute_url())
+
+    email_field = forms.EmailField()
+    try:
+        email = email_field.clean(request.POST.get("email", "")).lower()
+    except forms.ValidationError:
+        messages.error(request, "أدخلي بريدًا إلكترونيًا صحيحًا لاستلام التنبيه.")
+        return redirect(product.get_absolute_url())
+
+    product_url = request.build_absolute_uri(product.get_absolute_url())
+    subscription, created = BackInStockSubscription.objects.update_or_create(
+        product=product,
+        email=email,
+        defaults={"is_active": True, "notified_at": None, "product_url": product_url},
+    )
+    if created:
+        messages.success(request, "تم تسجيل بريدك وسنخبرك فور عودة المنتج للمخزون.")
+    else:
+        messages.success(request, "تم تجديد تنبيه عودة المنتج لهذا البريد.")
+    return redirect(product.get_absolute_url())

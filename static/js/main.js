@@ -175,6 +175,16 @@
     try {
       const data = await postForm(form);
       qsa("[data-cart-count]").forEach(badge => badge.textContent = data.cart_count);
+      window.storeTrack?.("add_to_cart", {
+        currency: "EGP",
+        value: Number(form.dataset.productPrice || 0) * Number(qs("input[name=quantity]", form)?.value || 1),
+        items: [{
+          item_id: form.dataset.productId || "",
+          item_name: form.dataset.productName || "",
+          price: Number(form.dataset.productPrice || 0),
+          quantity: Number(qs("input[name=quantity]", form)?.value || 1)
+        }]
+      });
       toast(data.message);
     } catch (error) {
       toast(error.message, true);
@@ -278,6 +288,8 @@
 
   const checkout = qs("[data-checkout]");
   if (checkout) {
+    const checkoutValue = Number((qs("[data-order-total]", checkout)?.textContent || "0").replace(/[^0-9.]/g, ""));
+    window.storeTrack?.("begin_checkout", { currency: "EGP", value: checkoutValue });
     const paymentRadios = qsa("input[name=payment_method]", checkout);
     const instapay = qs("[data-instapay]", checkout);
     const receipt = qs("input[name=payment_receipt]", checkout);

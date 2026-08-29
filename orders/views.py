@@ -94,7 +94,23 @@ def success(request, order_number):
     token_matches = str(order.access_token) == request.GET.get("token", "")
     if not owns_order and not token_matches:
         raise Http404
-    return render(request, "orders/success.html", {"order": order})
+    purchase_event = {
+        "transaction_id": order.order_number,
+        "currency": "EGP",
+        "value": float(order.total),
+        "shipping": float(order.shipping_cost),
+        "coupon": order.coupon.code if order.coupon_id else "",
+        "items": [
+            {
+                "item_id": item.sku,
+                "item_name": item.product_name,
+                "price": float(item.unit_price),
+                "quantity": item.quantity,
+            }
+            for item in order.items.all()
+        ],
+    }
+    return render(request, "orders/success.html", {"order": order, "purchase_event": purchase_event})
 
 
 def order_detail(request, order_number):

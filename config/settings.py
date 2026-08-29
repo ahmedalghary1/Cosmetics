@@ -191,7 +191,8 @@ X_FRAME_OPTIONS = "DENY"
 CONTENT_SECURITY_POLICY = os.getenv(
     "CONTENT_SECURITY_POLICY",
     "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self'; "
-    "script-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://analytics.tiktok.com; "
+    "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://connect.facebook.net https://www.facebook.com https://analytics.tiktok.com https://*.tiktok.com; font-src 'self'; "
     "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
 )
 PERMISSIONS_POLICY = os.getenv(
