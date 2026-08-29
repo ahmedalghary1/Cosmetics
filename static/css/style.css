@@ -264,6 +264,7 @@ p, small, .eyebrow, .section-copy, .product-category, .product-info > p, .routin
 textarea.form-control, .field textarea { resize: vertical; }
 .field-error, .errorlist { display: block; margin-top: 5px; color: var(--danger); font-size: .76rem; }
 .field small { display: block; color: var(--muted); font-size: .7rem; }
+.field .image-upload-hint { margin-top: 8px; border: 1px solid #e4c7a9; border-radius: 9px; background: #fff8f0; padding: 9px 11px; color: #6d462b; font-size: .76rem; line-height: 1.75; }
 .check { display: flex !important; align-items: center; gap: 8px; }
 .check input { width: 18px; height: 18px; accent-color: var(--primary); }
 .shop-layout { position: relative; display: grid; gap: 24px; }

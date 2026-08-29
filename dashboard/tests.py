@@ -85,6 +85,29 @@ class DashboardPermissionTests(TestCase):
         self.assertContains(response, "data-dashboard-overlay")
         self.assertContains(response, 'aria-expanded="false"')
 
+    def test_image_forms_show_recommended_dimensions_in_dashboard(self):
+        user = get_user_model().objects.create_superuser(
+            username="image-guide-admin", password="safe-password", email="images@example.com",
+        )
+        self.client.force_login(user)
+        expected_guides = {
+            "product_add": ("900 × 1200", "صور إضافية"),
+            "category_add": ("900 × 1200",),
+            "banner_add": ("1800 × 900", "1200 × 900", "750 × 1000"),
+            "offer_add": ("1200 × 1500",),
+            "gallery_add": ("1000 × 1000",),
+            "routine_add": ("600 × 600",),
+            "settings": ("630 × 240", "512 × 512"),
+        }
+
+        for route_name, guides in expected_guides.items():
+            with self.subTest(route_name=route_name):
+                response = self.client.get(reverse(f"dashboard:{route_name}"))
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, "image-upload-hint")
+                for guide in guides:
+                    self.assertContains(response, guide)
+
     def test_dashboard_home_contains_visual_financial_reports(self):
         user = get_user_model().objects.create_superuser(
             username="reports-admin", password="safe-password", email="reports@example.com",

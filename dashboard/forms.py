@@ -9,11 +9,17 @@ from core.image_utils import optimize_uploaded_image
 
 
 class StyledModelForm(forms.ModelForm):
+    image_upload_help = {}
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for field in self.fields.values():
+        for name, field in self.fields.items():
             if not isinstance(field.widget, (forms.CheckboxInput, forms.CheckboxSelectMultiple)):
                 field.widget.attrs.setdefault("class", "form-control")
+            if isinstance(field.widget, forms.FileInput):
+                field.widget.attrs.setdefault("accept", "image/jpeg,image/png,image/webp")
+            if name in self.image_upload_help:
+                field.help_text = self.image_upload_help[name]
 
     def clean(self):
         cleaned = super().clean()
@@ -30,6 +36,10 @@ class OfferProductChoiceField(forms.ModelMultipleChoiceField):
 
 
 class ProductForm(StyledModelForm):
+    image_upload_help = {
+        "main_image": "المقاس المقترح: 900 × 1200 بكسل (نسبة 3:4 رأسي). ضعي المنتج في المنتصف مع مساحة بسيطة حوله لأن أطراف الصورة قد تُقص قليلًا.",
+    }
+
     class Meta:
         model = Product
         fields = [
@@ -112,6 +122,10 @@ BundleItemFormSet = inlineformset_factory(
 
 
 class CategoryForm(StyledModelForm):
+    image_upload_help = {
+        "image": "المقاس المقترح: 900 × 1200 بكسل (نسبة 3:4 رأسي). اجعلي العنصر المهم في المنتصف واتركي الجزء السفلي خاليًا نسبيًا لاسم القسم.",
+    }
+
     class Meta:
         model = Category
         fields = ["name", "slug", "image", "description", "is_active", "order"]
@@ -182,12 +196,22 @@ class InventoryBatchForm(StyledModelForm):
 
 
 class BannerForm(StyledModelForm):
+    image_upload_help = {
+        "image": "للشاشات الكبيرة — البانر الرئيسي: 1800 × 900 بكسل (2:1)، والترويجي: 1600 × 720 بكسل (20:9). اتركي النصوص المهمة بعيدًا عن الحواف لأن الصورة تُقص حسب الشاشة.",
+        "image_tablet": "المقاس المقترح للتابلت: 1200 × 900 بكسل (4:3). اختياري؛ عند تركه فارغًا تُستخدم صورة الشاشات الكبيرة.",
+        "image_mobile": "المقاس المقترح للموبايل: 750 × 1000 بكسل (3:4 رأسي). ضعي العنصر الأساسي في المنتصف والجزء العلوي، واتركي مساحة للنص أسفل الصورة.",
+    }
+
     class Meta:
         model = Banner
         fields = ["position", "title", "subtitle", "button_text", "button_url", "image", "image_tablet", "image_mobile", "is_active", "order"]
 
 
 class OfferForm(StyledModelForm):
+    image_upload_help = {
+        "image": "المقاس المقترح: 1200 × 1500 بكسل (نسبة 4:5 رأسي). ضعي المنتجات في المنتصف لأن البطاقة تعرض الصورة بقصّ يغطي المساحة كاملة.",
+    }
+
     products = OfferProductChoiceField(
         label="المنتجات",
         queryset=Product.objects.none(),
@@ -281,18 +305,31 @@ class ContentPageForm(StyledModelForm):
 
 
 class StoreSettingsForm(StyledModelForm):
+    image_upload_help = {
+        "logo": "المقاس المقترح: 630 × 240 بكسل تقريبًا (شعار أفقي بنسبة قريبة من 21:8)، ويفضّل PNG أو WEBP بخلفية شفافة.",
+        "favicon": "المقاس المقترح: 512 × 512 بكسل (مربع 1:1). استخدمي رمزًا بسيطًا وواضحًا بدون نص صغير.",
+    }
+
     class Meta:
         model = StoreSettings
         exclude = ["created_at", "updated_at"]
 
 
 class SocialGalleryForm(StyledModelForm):
+    image_upload_help = {
+        "image": "المقاس المقترح: 1000 × 1000 بكسل (مربع 1:1). اجعلي المحتوى المهم في المنتصف لأن الصورة تُعرض مربعة.",
+    }
+
     class Meta:
         model = SocialGalleryImage
         fields = ["image", "alt_text", "link", "is_active", "order"]
 
 
 class RoutineStepForm(StyledModelForm):
+    image_upload_help = {
+        "image": "المقاس المقترح: 600 × 600 بكسل (مربع 1:1). ستظهر الصورة داخل إطار دائري، لذلك ضعي العنصر المهم في المنتصف بعيدًا عن الزوايا.",
+    }
+
     class Meta:
         model = RoutineStep
         fields = ["title", "description", "image", "category", "product", "order", "is_active"]

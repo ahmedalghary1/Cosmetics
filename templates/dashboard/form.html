@@ -30,7 +30,7 @@
           <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
           {{ field }}
         {% endif %}
-        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {% if field.help_text %}<small{% if field.field.widget.input_type == 'file' %} class="image-upload-hint"{% endif %}>{{ field.help_text }}</small>{% endif %}
         {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
       </div>
     {% endfor %}
@@ -38,6 +38,7 @@
       <div class="field full">
         <label for="additional-images">صور إضافية</label>
         <input class="form-control" id="additional-images" type="file" name="additional_images" accept="image/jpeg,image/png,image/webp" multiple>
+        <small class="image-upload-hint">المقاس المقترح لكل صورة: 900 × 1200 بكسل (نسبة 3:4 رأسي)، بنفس أبعاد واتجاه الصورة الرئيسية لعرض معرض المنتج بشكل متناسق.</small>
         {% if product.images.all %}
           <div class="existing-images">
             {% for image in product.images.all %}
