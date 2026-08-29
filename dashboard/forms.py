@@ -18,7 +18,7 @@ class StyledModelForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         for name, value in list(cleaned.items()):
-            if name in {"image", "main_image", "logo", "favicon"} and value:
+            if name in {"image", "image_tablet", "image_mobile", "main_image", "logo", "favicon"} and value:
                 cleaned[name] = optimize_uploaded_image(value)
         return cleaned
 
@@ -184,7 +184,7 @@ class InventoryBatchForm(StyledModelForm):
 class BannerForm(StyledModelForm):
     class Meta:
         model = Banner
-        fields = ["position", "title", "subtitle", "button_text", "button_url", "image", "is_active", "order"]
+        fields = ["position", "title", "subtitle", "button_text", "button_url", "image", "image_tablet", "image_mobile", "is_active", "order"]
 
 
 class OfferForm(StyledModelForm):

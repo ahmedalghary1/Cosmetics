@@ -605,7 +605,7 @@ td small { display: block; color: var(--muted); }
   .desktop-only { display: inline-grid !important; }
   .nav-shell { min-height: 84px; grid-template-columns: minmax(110px, 150px) minmax(0, 1fr) auto; gap: 24px; }
   .nav-shell > .brand { width: 100%; max-width: 150px; justify-self: start; }
-  .desktop-nav { display: flex; align-items: center; justify-content: center; gap: clamp(12px, 1.5vw, 25px); font-size: .8rem; font-weight: 700; }
+  .desktop-nav { display: flex; align-items: center; justify-content: center; gap: clamp(12px, 1.5vw, 25px); font-size: clamp(1rem, 1.2vw, 1.15rem); font-weight: 700; }
   .desktop-nav a { position: relative; white-space: nowrap; }
   .desktop-nav a::after { content: ""; position: absolute; right: 0; bottom: -7px; width: 0; height: 1px; background: var(--primary); transition: width .2s; }
   .desktop-nav a:hover::after { width: 100%; }

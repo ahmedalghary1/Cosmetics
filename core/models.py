@@ -73,7 +73,9 @@ class Banner(TimeStampedModel):
     subtitle = models.CharField("النص", max_length=300, blank=True)
     button_text = models.CharField("نص الزر", max_length=60, blank=True)
     button_url = models.CharField("رابط الزر", max_length=255, default="/products/")
-    image = models.ImageField("الصورة", upload_to="banners/", validators=[validate_image_upload])
+    image = models.ImageField("الصورة (شاشات كبيرة)", upload_to="banners/", validators=[validate_image_upload])
+    image_tablet = models.ImageField("صورة التابلت", upload_to="banners/", blank=True, null=True, validators=[validate_image_upload])
+    image_mobile = models.ImageField("صورة الموبايل", upload_to="banners/", blank=True, null=True, validators=[validate_image_upload])
     is_active = models.BooleanField("نشط", default=True)
     order = models.PositiveSmallIntegerField("الترتيب", default=0)
 
