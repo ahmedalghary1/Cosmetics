@@ -1,0 +1,34 @@
+{% extends "dashboard/base.html" %}
+{% block title %}ترتيب منتجات {{ category.name }}{% endblock %}
+{% block dashboard_content %}
+<div class="dashboard-heading">
+  <div><h1>ترتيب منتجات {{ category.name }}</h1><p>استخدمي الأسهم لتحديد ترتيب الظهور الافتراضي داخل هذا القسم، ثم احفظي التغييرات.</p></div>
+  <a class="btn btn-outline" href="{% url 'dashboard:categories' %}">{% icon "arrow-left" %}<span>العودة للأقسام</span></a>
+</div>
+<section class="dashboard-panel">
+  {% if products %}
+  <form method="post" data-product-order-form>
+    {% csrf_token %}
+    <ol class="product-order-list" data-product-order-list>
+      {% for product in products %}
+      <li data-product-order-item>
+        <input type="hidden" name="product_ids" value="{{ product.pk }}">
+        <span class="product-order-number" data-order-number>{{ forloop.counter }}</span>
+        <div class="product-order-product">
+          {% if product.main_image %}<img src="{{ product.main_image.url }}" alt="" width="56" height="56">{% endif %}
+          <div><strong>{{ product.name }}</strong><small>{{ product.sku }}</small></div>
+        </div>
+        <div class="product-order-actions">
+          <button type="button" class="btn btn-outline" data-move-up aria-label="نقل {{ product.name }} لأعلى"><span aria-hidden="true">↑</span><span>أعلى</span></button>
+          <button type="button" class="btn btn-outline" data-move-down aria-label="نقل {{ product.name }} لأسفل"><span aria-hidden="true">↓</span><span>أسفل</span></button>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+    <button class="btn btn-primary" type="submit">{% icon "save" %}<span>حفظ الترتيب</span></button>
+  </form>
+  {% else %}
+  <p>لا توجد منتجات داخل هذا القسم بعد.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -22,7 +22,7 @@ from core.validators import validate_image_upload
 from core.image_utils import optimize_uploaded_image
 from orders.models import Coupon, CouponRedemption, Order, OrderItem, ReturnRequest, ReturnRequestItem, ShippingZone
 from orders.services import OrderTransitionError, process_return, transition_order
-from products.models import Category, InventoryBatch, Product, ProductImage, ProductVariant, VariantOption
+from products.models import Category, InventoryBatch, Product, ProductCategoryOrder, ProductImage, ProductVariant, VariantOption
 from products.services import notify_back_in_stock_after_commit
 
 from .forms import (
@@ -435,6 +435,45 @@ def category_form(request, pk=None):
         messages.success(request, "تم حفظ التصنيف.")
         return redirect("dashboard:categories")
     return render(request, "dashboard/form.html", {"form": form, "title": "تعديل تصنيف" if instance else "إضافة تصنيف"})
+
+
+@dashboard_permission("products.view_category", "products.change_category")
+def category_product_order(request, pk):
+    category = get_object_or_404(Category, pk=pk)
+    products = list(
+        Product.objects.filter(categories=category)
+        .prefetch_related("category_display_orders")
+        .order_by("name", "pk")
+    )
+    saved_orders = {
+        item.product_id: item.order
+        for item in ProductCategoryOrder.objects.filter(category=category)
+    }
+    products.sort(key=lambda product: (saved_orders.get(product.pk, 2147483647), product.name, product.pk))
+
+    if request.method == "POST":
+        submitted_ids = request.POST.getlist("product_ids")
+        valid_ids = {str(product.pk) for product in products}
+        if len(submitted_ids) != len(valid_ids) or set(submitted_ids) != valid_ids:
+            messages.error(request, "تعذر حفظ الترتيب لأن قائمة المنتجات تغيّرت. حاولي مرة أخرى.")
+            return redirect("dashboard:category_product_order", pk=category.pk)
+        with transaction.atomic():
+            ProductCategoryOrder.objects.filter(category=category).exclude(
+                product_id__in=submitted_ids,
+            ).delete()
+            for position, product_id in enumerate(submitted_ids, start=1):
+                ProductCategoryOrder.objects.update_or_create(
+                    category=category,
+                    product_id=product_id,
+                    defaults={"order": position},
+                )
+        messages.success(request, "تم حفظ ترتيب منتجات القسم.")
+        return redirect("dashboard:category_product_order", pk=category.pk)
+
+    return render(request, "dashboard/category_product_order.html", {
+        "category": category,
+        "products": products,
+    })
 
 
 @dashboard_permission("products.delete_category")

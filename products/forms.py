@@ -5,6 +5,7 @@ from .models import Category
 
 class ProductFilterForm(forms.Form):
     SORT_OPTIONS = [
+        ("recommended", "ترتيب القسم"),
         ("newest", "الأحدث"),
         ("price_asc", "السعر: الأقل أولًا"),
         ("price_desc", "السعر: الأعلى أولًا"),

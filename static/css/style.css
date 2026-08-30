@@ -513,6 +513,17 @@ td small { display: block; color: var(--muted); }
 .choice-picker-options [hidden] { display: none !important; }
 .category-chips { display: flex; flex-wrap: wrap; gap: 5px; min-width: 140px; }
 .category-chip { display: inline-flex; padding: 3px 8px; border-radius: 999px; background: var(--cream); color: var(--brown); font-size: .7rem; white-space: nowrap; }
+.product-order-list { display: grid; gap: 9px; margin: 0 0 20px; padding: 0; list-style: none; counter-reset: none; }
+.product-order-list li { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 13px; background: #fffdf9; }
+.product-order-number { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: var(--cream); color: var(--brown); font-weight: 700; }
+.product-order-product { min-width: 0; display: flex; align-items: center; gap: 11px; }
+.product-order-product img { width: 56px; height: 56px; flex: 0 0 auto; border-radius: 9px; object-fit: cover; }
+.product-order-product div { min-width: 0; display: grid; }
+.product-order-product strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.product-order-product small { color: var(--muted); }
+.product-order-actions { display: flex; gap: 7px; }
+.product-order-actions .btn { min-height: 40px; padding: 7px 11px; }
+.product-order-actions button:disabled { opacity: .38; cursor: not-allowed; }
 .existing-images { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .existing-images img { width: 94px; height: 94px; border-radius: 9px; object-fit: cover; }
 .existing-images label { display: grid; gap: 4px; color: var(--danger); font-size: .7rem; }
@@ -815,6 +826,9 @@ td small { display: block; color: var(--muted); }
   .choice-picker-options { max-height: 52dvh; padding: 5px; }
   .choice-picker-options > div { grid-template-columns: minmax(0, 1fr); }
   .choice-picker-options label { min-height: 50px; }
+  .product-order-list li { grid-template-columns: 34px minmax(0, 1fr); gap: 9px; padding: 10px; }
+  .product-order-actions { grid-column: 1 / -1; }
+  .product-order-actions .btn { flex: 1; }
   .table-wrap { margin-inline: -13px; width: calc(100% + 26px); padding-inline: 13px; }
   th, td { padding: 11px 9px; }
   .table-actions { flex-wrap: nowrap; }

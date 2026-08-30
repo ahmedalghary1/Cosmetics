@@ -555,5 +555,28 @@
     motionPreference.addEventListener?.("change", disableMotion);
   }
 
+  const productOrderList = qs("[data-product-order-list]");
+  if (productOrderList) {
+    const refreshProductOrder = () => {
+      qsa("[data-product-order-item]", productOrderList).forEach((item, index, items) => {
+        qs("[data-order-number]", item).textContent = index + 1;
+        qs("[data-move-up]", item).disabled = index === 0;
+        qs("[data-move-down]", item).disabled = index === items.length - 1;
+      });
+    };
+    productOrderList.addEventListener("click", event => {
+      const button = event.target.closest("[data-move-up], [data-move-down]");
+      if (!button) return;
+      const item = button.closest("[data-product-order-item]");
+      if (button.matches("[data-move-up]") && item.previousElementSibling) {
+        productOrderList.insertBefore(item, item.previousElementSibling);
+      } else if (button.matches("[data-move-down]") && item.nextElementSibling) {
+        productOrderList.insertBefore(item.nextElementSibling, item);
+      }
+      refreshProductOrder();
+    });
+    refreshProductOrder();
+  }
+
   initScrollMotion();
 })();

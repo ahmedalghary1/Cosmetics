@@ -1,7 +1,8 @@
 from django import forms
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import F, Q
+from django.db.models import F, IntegerField, OuterRef, Q, Subquery, Value
+from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -9,7 +10,7 @@ from core.models import Offer
 from core.rate_limit import rate_limit
 
 from .forms import ProductFilterForm
-from .models import BackInStockSubscription, Category, Product
+from .models import BackInStockSubscription, Category, Product, ProductCategoryOrder
 
 
 SORT_OPTIONS = {
@@ -23,11 +24,13 @@ SORT_OPTIONS = {
 def product_list(request, category_slug=None):
     products = Product.objects.active().select_related("category").prefetch_related("categories")
     selected_category = None
+    ordering_category = None
     selected_offer = None
     filter_form = ProductFilterForm(request.GET or None)
     filters = filter_form.cleaned_data if filter_form.is_valid() else {}
     if category_slug:
         selected_category = get_object_or_404(Category, slug=category_slug, is_active=True)
+        ordering_category = selected_category
         products = products.filter(categories=selected_category).distinct()
 
     query = filters.get("q", "").strip()
@@ -39,7 +42,8 @@ def product_list(request, category_slug=None):
         ).distinct()
     category_filter = filters.get("category", "").strip()
     if category_filter and not selected_category:
-        products = products.filter(categories__slug=category_filter).distinct()
+        ordering_category = Category.objects.filter(slug=category_filter, is_active=True).first()
+        products = products.filter(categories=ordering_category).distinct()
     if filters.get("min_price") is not None:
         products = products.filter(price__gte=filters["min_price"])
     if filters.get("max_price") is not None:
@@ -71,8 +75,22 @@ def product_list(request, category_slug=None):
     if filters.get("new"):
         products = products.filter(is_new=True)
 
-    sort = filters.get("sort") or "newest"
-    products = products.order_by(SORT_OPTIONS.get(sort, "-created_at"))
+    sort = filters.get("sort") or ("recommended" if ordering_category else "newest")
+    if sort == "recommended" and not ordering_category:
+        sort = "newest"
+    if sort == "recommended" and ordering_category:
+        saved_order = ProductCategoryOrder.objects.filter(
+            category=ordering_category,
+            product_id=OuterRef("pk"),
+        ).values("order")[:1]
+        products = products.annotate(
+            category_order=Coalesce(
+                Subquery(saved_order, output_field=IntegerField()),
+                Value(2147483647),
+            ),
+        ).order_by("category_order", "-created_at", "pk")
+    else:
+        products = products.order_by(SORT_OPTIONS.get(sort, "-created_at"))
     paginator = Paginator(products, 12)
     page = paginator.get_page(request.GET.get("page"))
     query_params = request.GET.copy()
@@ -81,6 +99,7 @@ def product_list(request, category_slug=None):
         "page_obj": page,
         "categories": Category.objects.filter(is_active=True),
         "selected_category": selected_category,
+        "ordering_category": ordering_category,
         "selected_offer": selected_offer,
         "sort": sort,
         "query_string": query_params.urlencode(),

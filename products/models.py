@@ -202,6 +202,39 @@ class Product(TimeStampedModel):
         return self.name
 
 
+class ProductCategoryOrder(models.Model):
+    """The display position of a product inside one specific category."""
+
+    category = models.ForeignKey(
+        Category,
+        verbose_name="القسم",
+        related_name="product_display_orders",
+        on_delete=models.CASCADE,
+    )
+    product = models.ForeignKey(
+        Product,
+        verbose_name="المنتج",
+        related_name="category_display_orders",
+        on_delete=models.CASCADE,
+    )
+    order = models.PositiveIntegerField("الترتيب", default=0)
+
+    class Meta:
+        ordering = ["order", "product_id"]
+        verbose_name = "ترتيب منتج داخل قسم"
+        verbose_name_plural = "ترتيب المنتجات داخل الأقسام"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["category", "product"],
+                name="unique_product_order_per_category",
+            ),
+        ]
+        indexes = [models.Index(fields=["category", "order"])]
+
+    def __str__(self):
+        return f"{self.category}: {self.product} ({self.order})"
+
+
 class BackInStockSubscription(TimeStampedModel):
     product = models.ForeignKey(
         Product, verbose_name="المنتج", related_name="stock_subscriptions",

@@ -11,7 +11,7 @@ from PIL import Image
 
 from core.models import ContentPage, Offer
 from orders.models import Order, ShippingZone
-from products.models import Category, InventoryBatch, Product
+from products.models import Category, InventoryBatch, Product, ProductCategoryOrder
 
 
 def image_upload(name="offer.jpg"):
@@ -254,6 +254,75 @@ class DashboardPermissionTests(TestCase):
         self.assertFalse(product.is_bundle)
         self.assertIsNone(product.old_price)
         self.assertCountEqual(product.categories.values_list("pk", flat=True), [first_category.pk, second_category.pk])
+
+    def test_category_product_order_is_saved_and_used_on_storefront(self):
+        user = get_user_model().objects.create_superuser(
+            username="order-admin", password="safe-password", email="order@example.com",
+        )
+        category = Category.objects.create(name="العناية اليومية")
+        first = Product.objects.create(
+            name="المنتج الأول", sku="ORDER-1", category=category,
+            description="وصف", price=Decimal("100"), stock_quantity=2,
+        )
+        second = Product.objects.create(
+            name="المنتج الثاني", sku="ORDER-2", category=category,
+            description="وصف", price=Decimal("120"), stock_quantity=2,
+        )
+        third = Product.objects.create(
+            name="المنتج الثالث", sku="ORDER-3", category=category,
+            description="وصف", price=Decimal("140"), stock_quantity=2,
+        )
+        self.client.force_login(user)
+
+        page = self.client.get(reverse("dashboard:category_product_order", args=[category.pk]))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, 'data-product-order-list')
+
+        response = self.client.post(
+            reverse("dashboard:category_product_order", args=[category.pk]),
+            {"product_ids": [third.pk, first.pk, second.pk]},
+        )
+        self.assertRedirects(response, reverse("dashboard:category_product_order", args=[category.pk]))
+        self.assertEqual(
+            list(ProductCategoryOrder.objects.filter(category=category).values_list("product_id", flat=True)),
+            [third.pk, first.pk, second.pk],
+        )
+
+        storefront = self.client.get(category.get_absolute_url())
+        displayed_ids = [product.pk for product in storefront.context["page_obj"].object_list]
+        self.assertEqual(displayed_ids, [third.pk, first.pk, second.pk])
+
+    def test_category_orders_are_independent(self):
+        user = get_user_model().objects.create_superuser(
+            username="multi-order-admin", password="safe-password", email="multi-order@example.com",
+        )
+        first_category = Category.objects.create(name="القسم الأول")
+        second_category = Category.objects.create(name="القسم الثاني")
+        first = Product.objects.create(
+            name="ألف", sku="MULTI-ORDER-1", category=first_category,
+            description="وصف", price=Decimal("100"), stock_quantity=2,
+        )
+        second = Product.objects.create(
+            name="باء", sku="MULTI-ORDER-2", category=first_category,
+            description="وصف", price=Decimal("120"), stock_quantity=2,
+        )
+        first.categories.add(second_category)
+        second.categories.add(second_category)
+        self.client.force_login(user)
+
+        self.client.post(
+            reverse("dashboard:category_product_order", args=[first_category.pk]),
+            {"product_ids": [first.pk, second.pk]},
+        )
+        self.client.post(
+            reverse("dashboard:category_product_order", args=[second_category.pk]),
+            {"product_ids": [second.pk, first.pk]},
+        )
+
+        first_page = self.client.get(first_category.get_absolute_url())
+        second_page = self.client.get(second_category.get_absolute_url())
+        self.assertEqual([p.pk for p in first_page.context["page_obj"].object_list], [first.pk, second.pk])
+        self.assertEqual([p.pk for p in second_page.context["page_obj"].object_list], [second.pk, first.pk])
 
     def test_unreferenced_product_can_be_deleted(self):
         user = get_user_model().objects.create_superuser(
