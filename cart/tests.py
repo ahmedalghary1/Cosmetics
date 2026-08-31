@@ -54,6 +54,30 @@ class CartTests(TestCase):
         self.assertEqual(response.json()["total"], "376.50")
         self.assertEqual(self.client.session[Cart.SESSION_KEY][f"p:{self.product.pk}"], 3)
 
+    def test_product_card_toggle_adds_then_removes_product(self):
+        url = reverse("cart:toggle", args=[self.product.pk])
+
+        added = self.client.post(url, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(added.status_code, 200)
+        self.assertTrue(added.json()["active"])
+        self.assertEqual(added.json()["cart_count"], 1)
+        self.assertEqual(self.client.session[Cart.SESSION_KEY][f"p:{self.product.pk}"], 1)
+
+        removed = self.client.post(url, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(removed.status_code, 200)
+        self.assertFalse(removed.json()["active"])
+        self.assertEqual(removed.json()["cart_count"], 0)
+        self.assertNotIn(f"p:{self.product.pk}", self.client.session[Cart.SESSION_KEY])
+
+    def test_product_list_marks_cart_toggle_as_active(self):
+        self.client.post(reverse("cart:add", args=[self.product.pk]), {"quantity": 1})
+
+        response = self.client.get(reverse("products:list"))
+
+        self.assertContains(response, "data-cart-toggle")
+        self.assertContains(response, 'class="btn btn-outline cart-toggle active"')
+        self.assertContains(response, "في السلة")
+
     def test_cart_page_exposes_live_total_update_targets(self):
         self.client.post(reverse("cart:add", args=[self.product.pk]), {"quantity": 1})
 

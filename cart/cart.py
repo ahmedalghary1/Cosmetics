@@ -42,6 +42,27 @@ class Cart:
             self.data.pop(str(product.pk), None)
         self.save()
 
+    def contains(self, product, variant=None):
+        key = self._key(product, variant)
+        if key in self.data:
+            return True
+        # Compatibility with carts created before variant support.
+        return not variant and str(product.pk) in self.data
+
+    @property
+    def product_ids(self):
+        """Product ids stored without variants, used to render product-card state."""
+        product_ids = set()
+        for key in self.data:
+            key = str(key)
+            if key.startswith("v:"):
+                continue
+            try:
+                product_ids.add(int(key[2:] if key.startswith("p:") else key))
+            except ValueError:
+                continue
+        return product_ids
+
     def clear(self):
         self.session.pop(self.SESSION_KEY, None)
         self.session.pop(self.COUPON_KEY, None)

@@ -199,6 +199,8 @@ p, small, .eyebrow, .section-copy, .product-category, .product-info > p, .routin
 .card-actions { display: flex; align-items: stretch; gap: 6px; }
 .card-actions form:first-child { flex: 1; }
 .card-actions .btn { width: 100%; min-height: 46px; padding: 8px 10px; font-size: .78rem; }
+.card-actions .cart-toggle.active { border-color: var(--primary); background: var(--primary); color: white; }
+.card-actions .cart-toggle.active .ui-icon { fill: currentColor; }
 .heart-btn { width: 46px; height: 46px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 50%; background: transparent; }
 .heart-btn .ui-icon { width: 21px; height: 21px; }
 .heart-btn.active { background: var(--primary); color: white; }

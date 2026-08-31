@@ -175,7 +175,19 @@
     try {
       const data = await postForm(form);
       qsa("[data-cart-count]").forEach(badge => badge.textContent = data.cart_count);
-      window.storeTrack?.("add_to_cart", {
+      const isToggle = form.hasAttribute("data-cart-toggle");
+      if (isToggle) {
+        qsa(`[data-cart-toggle][data-product-id="${form.dataset.productId}"]`).forEach(productForm => {
+          const productButton = qs("button[type=submit]", productForm);
+          productButton.classList.toggle("active", data.active);
+          productButton.setAttribute("aria-pressed", String(data.active));
+          const label = qs("[data-cart-label]", productButton);
+          if (label) label.textContent = data.active ? "في السلة" : "إضافة للسلة";
+          const accessibleLabel = data.active ? productButton.dataset.removeLabel : productButton.dataset.addLabel;
+          if (accessibleLabel) productButton.setAttribute("aria-label", accessibleLabel);
+        });
+      }
+      if (!isToggle || data.active) window.storeTrack?.("add_to_cart", {
         currency: "EGP",
         value: Number(form.dataset.productPrice || 0) * Number(qs("input[name=quantity]", form)?.value || 1),
         items: [{

@@ -51,6 +51,23 @@ def add(request, product_id):
 
 
 @require_POST
+def toggle(request, product_id):
+    cart = Cart(request)
+    product = get_object_or_404(Product.objects.active(), pk=product_id, has_variants=False)
+    if cart.contains(product):
+        cart.remove(product)
+        return _response(request, "تمت إزالة المنتج من السلة.", cart, active=False)
+    try:
+        cart.add(product, 1)
+    except (ValueError, TypeError) as exc:
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"message": str(exc), "cart_count": len(cart)}, status=400)
+        messages.error(request, str(exc))
+        return redirect(safe_redirect_target(request, request.POST.get("next"), product.get_absolute_url()))
+    return _response(request, "تمت إضافة المنتج إلى السلة.", cart, active=True)
+
+
+@require_POST
 def update(request, product_id):
     cart = Cart(request)
     product = get_object_or_404(Product, pk=product_id)
