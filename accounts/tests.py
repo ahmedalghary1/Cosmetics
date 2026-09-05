@@ -1,4 +1,5 @@
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import authenticate, get_user_model
 from django.core import mail
@@ -75,6 +76,21 @@ class AccountTests(TestCase):
         self.assertIn("إذا لم يصدر هذا الطلب منك", mail.outbox[0].body)
         self.assertNotIn("تطلبي", mail.outbox[0].body)
         self.assertEqual(mail.outbox[0].subject, "استعادة كلمة المرور | متجر الاختبار")
+
+    def test_password_reset_reports_delivery_failure_instead_of_false_success(self):
+        get_user_model().objects.create_user(
+            username="reset-failure", email="failure@example.com", password="safe-password-123",
+        )
+        with patch(
+            "accounts.forms.EmailMultiAlternatives.send",
+            side_effect=OSError("SMTP unavailable"),
+        ):
+            response = self.client.post(
+                reverse("accounts:password_reset"),
+                {"email": "failure@example.com"},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "تعذر إرسال رابط استعادة كلمة المرور حاليًا")
 
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.console.EmailBackend")
     def test_password_reset_does_not_report_success_with_console_backend(self):

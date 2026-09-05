@@ -2,10 +2,41 @@ import re
 
 from django import forms
 from django.contrib.auth import get_user_model
-from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, UserCreationForm
+from django.contrib.auth.forms import (
+    AuthenticationForm,
+    PasswordChangeForm,
+    PasswordResetForm,
+    UserCreationForm,
+)
+from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
+from django.template import loader
 
 from .models import Profile, normalize_phone
+
+
+class ReliablePasswordResetForm(PasswordResetForm):
+    """Send reset mail without Django's silent SMTP-error fallback."""
+
+    def send_mail(
+        self,
+        subject_template_name,
+        email_template_name,
+        context,
+        from_email,
+        to_email,
+        html_email_template_name=None,
+    ):
+        subject = loader.render_to_string(subject_template_name, context)
+        subject = "".join(subject.splitlines())
+        body = loader.render_to_string(email_template_name, context)
+        email = EmailMultiAlternatives(subject, body, from_email, [to_email])
+        if html_email_template_name:
+            html_body = loader.render_to_string(html_email_template_name, context)
+            email.attach_alternative(html_body, "text/html")
+        # The built-in form hides transport errors and still shows success.
+        # Raising here lets the view report a real delivery failure.
+        return email.send(fail_silently=False)
 
 
 class ArabicAuthenticationForm(AuthenticationForm):

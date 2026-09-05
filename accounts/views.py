@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib import messages
 from django.contrib.auth import login, update_session_auth_hash, views as auth_views
 from django.contrib.auth.decorators import login_required
@@ -12,8 +14,17 @@ from core.models import StoreSettings
 from core.rate_limit import rate_limit
 from core.utils import safe_redirect_target
 
-from .forms import ArabicAuthenticationForm, ArabicPasswordChangeForm, ProfileForm, RegistrationForm
+from .forms import (
+    ArabicAuthenticationForm,
+    ArabicPasswordChangeForm,
+    ProfileForm,
+    RegistrationForm,
+    ReliablePasswordResetForm,
+)
 from .models import WishlistItem
+
+
+logger = logging.getLogger(__name__)
 
 
 @method_decorator(rate_limit("login", limit=10, window=300), name="dispatch")
@@ -25,6 +36,7 @@ class RateLimitedLoginView(auth_views.LoginView):
 @method_decorator(rate_limit("password-reset", limit=5, window=3600), name="dispatch")
 class BrandedPasswordResetView(auth_views.PasswordResetView):
     template_name = "registration/password_reset_form.html"
+    form_class = ReliablePasswordResetForm
     email_template_name = "registration/password_reset_email.html"
     html_email_template_name = "registration/password_reset_email_html.html"
     subject_template_name = "registration/password_reset_subject.txt"
@@ -41,7 +53,15 @@ class BrandedPasswordResetView(auth_views.PasswordResetView):
                 "خدمة إرسال البريد غير مهيأة حاليًا. يرجى التواصل مع إدارة المتجر.",
             )
             return self.form_invalid(form)
-        return super().form_valid(form)
+        try:
+            return super().form_valid(form)
+        except Exception:
+            logger.exception("Password reset email delivery failed")
+            form.add_error(
+                None,
+                "تعذر إرسال رابط استعادة كلمة المرور حاليًا. يرجى المحاولة مرة أخرى لاحقًا.",
+            )
+            return self.form_invalid(form)
 
 
 @rate_limit("register", limit=5, window=3600)
