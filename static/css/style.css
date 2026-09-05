@@ -393,7 +393,11 @@ textarea.form-control, .field textarea { resize: vertical; }
 .success-mark .ui-icon { width: 34px; height: 34px; }
 .success-page h1 { font-size: clamp(2rem, 6vw, 3.4rem); }
 .success-page > p { color: var(--muted); }
-.order-number { display: inline-flex; flex-direction: column; margin-block: 15px 25px; padding: 12px 25px; border: 1px dashed var(--accent); border-radius: 13px; background: white; }
+.order-number { display: inline-flex; flex-direction: column; gap: 4px; margin-block: 15px 25px; padding: 12px 18px; border: 1px dashed var(--accent); border-radius: 13px; background: white; }
+.order-number-value { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.order-copy-button { display: inline-flex; min-height: 36px; align-items: center; gap: 6px; border: 1px solid var(--accent); border-radius: 9px; padding: 5px 10px; background: var(--cream); color: var(--primary); font-size: .75rem; font-weight: 700; transition: background-color .2s, border-color .2s; }
+.order-copy-button:hover { border-color: var(--primary); background: var(--surface-2); }
+.order-copy-button .ui-icon { width: 16px; height: 16px; }
 .order-receipt { display: grid; gap: 13px; margin-bottom: 25px; padding: 22px; text-align: right; }
 .status-badge { display: inline-flex; width: fit-content; padding: 4px 9px; border-radius: 30px; background: #eee9e5; color: #5c4d46; font-size: .68rem; font-weight: 800; white-space: nowrap; }
 .status-new, .status-awaiting_payment, .status-pending_verification { background: #fff0d5; color: #704607; }

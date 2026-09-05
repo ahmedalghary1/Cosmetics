@@ -123,6 +123,37 @@
     window.setTimeout(() => element.remove(), 3800);
   }
 
+  qsa("[data-copy-order]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const orderNumber = button.dataset.copyOrder;
+      try {
+        if (navigator.clipboard?.writeText && window.isSecureContext) {
+          await navigator.clipboard.writeText(orderNumber);
+        } else {
+          const input = document.createElement("textarea");
+          input.value = orderNumber;
+          input.setAttribute("readonly", "");
+          input.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+          document.body.append(input);
+          input.select();
+          const copied = document.execCommand("copy");
+          input.remove();
+          if (!copied) throw new Error("Copy command failed");
+        }
+        const label = qs("[data-copy-label]", button);
+        label.textContent = "تم النسخ";
+        button.setAttribute("aria-label", "تم نسخ رقم الطلب");
+        toast("تم نسخ رقم الطلب");
+        window.setTimeout(() => {
+          label.textContent = "نسخ";
+          button.setAttribute("aria-label", "نسخ رقم الطلب");
+        }, 2000);
+      } catch (error) {
+        toast("تعذر نسخ رقم الطلب. حدده وانسخه يدويًا.", true);
+      }
+    });
+  });
+
   qsa("[data-quantity]").forEach(wrapper => {
     const input = qs("input", wrapper);
     const update = delta => {
@@ -436,7 +467,6 @@
       ".page-hero .container > *",
       ".section-heading > *",
       ".category-row > *",
-      ".product-grid > *",
       ".bundle-offers-grid > *",
       ".routine-grid > *",
       ".social-grid > *",
@@ -444,7 +474,6 @@
       ".promo-banner > div > *",
       ".product-detail-grid > *",
       ".product-description > *",
-      ".shop-layout > *",
       ".cart-layout > *",
       ".checkout-layout > *",
       ".account-layout > *",
@@ -455,7 +484,7 @@
       ".site-footer .footer-grid > *",
       ".site-footer .footer-bottom > *"
     ];
-    const scaleSelectors = ".category-row > *, .product-grid > *, .bundle-offers-grid > *, .routine-grid > *, .social-grid > *, .product-detail-grid > .gallery";
+    const scaleSelectors = ".category-row > *, .bundle-offers-grid > *, .routine-grid > *, .social-grid > *, .product-detail-grid > .gallery";
     const revealElements = [...new Set(revealSelectors.flatMap(selector => qsa(selector)))]
       .filter(element => !element.closest(".dashboard-body") && !element.matches("[data-filters]"));
     const groupIndexes = new Map();

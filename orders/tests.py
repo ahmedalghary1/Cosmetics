@@ -125,6 +125,17 @@ class CheckoutTests(TestCase):
         self.assertEqual(order.reservations.get().status, InventoryReservation.Status.ACTIVE)
         self.assertTrue(order.audit_logs.filter(action="order_created").exists())
 
+    def test_success_page_has_copy_order_number_button(self):
+        order = self.create()
+
+        response = self.client.get(
+            f"{order.get_success_url()}?token={order.access_token}",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'data-copy-order="{order.order_number}"')
+        self.assertContains(response, "نسخ رقم الطلب")
+
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
         EMAIL_HOST_USER="admin@example.com",

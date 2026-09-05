@@ -19,6 +19,6 @@
       <button class="btn btn-primary" type="submit">عرض النتائج</button><a class="clear-filter" href="{% if selected_category %}{{ selected_category.get_absolute_url }}{% if selected_offer %}?offer={{ selected_offer.pk }}{% endif %}{% elif selected_offer %}{% url 'products:list' %}?offer={{ selected_offer.pk }}{% else %}{% url 'products:list' %}{% endif %}">مسح الفلاتر</a>
     </form>
   </aside>
-  <section class="shop-results"><div class="results-meta"><p>{{ page_obj.paginator.count }} منتج</p></div>{% if page_obj %}<div class="product-grid">{% for product in page_obj %}{% include "includes/_product_card.html" %}{% empty %}{% url 'products:list' as shop_url %}{% include "includes/_empty_state.html" with title="لا توجد منتجات مطابقة للبحث" text="يمكن تغيير الفلاتر أو عرض كل المنتجات." url=shop_url action="عرض كل المنتجات" %}{% endfor %}</div>{% include "includes/_pagination.html" %}{% endif %}</section>
+  <section class="shop-results"><div class="results-meta"><p>{{ page_obj.paginator.count }} منتج</p></div>{% if page_obj %}<div class="product-grid">{% for product in page_obj %}{% if forloop.counter <= 4 %}{% include "includes/_product_card.html" with eager_image=True %}{% else %}{% include "includes/_product_card.html" %}{% endif %}{% empty %}{% url 'products:list' as shop_url %}{% include "includes/_empty_state.html" with title="لا توجد منتجات مطابقة للبحث" text="يمكن تغيير الفلاتر أو عرض كل المنتجات." url=shop_url action="عرض كل المنتجات" %}{% endfor %}</div>{% include "includes/_pagination.html" %}{% endif %}</section>
 </div>
 {% endblock %}
