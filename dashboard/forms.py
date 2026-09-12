@@ -44,7 +44,7 @@ class ProductForm(StyledModelForm):
         model = Product
         fields = [
             "name", "slug", "sku", "categories", "short_description", "description",
-            "price", "stock_quantity", "has_variants", "main_image", "ingredients", "usage",
+            "price", "old_price", "stock_quantity", "has_variants", "main_image", "ingredients", "usage",
             "brand", "country_of_origin", "key_ingredients", "benefits", "warnings",
             "suitable_for", "skin_types", "hair_types", "size_label", "pao_months",
             "cruelty_free", "vegan",
